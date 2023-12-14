@@ -1,0 +1,8 @@
+2023-12-15 00:56:03,519 ERROR 1 validation error for UnbanChatMember
+user_id
+  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.5/v/int_type
+2023-12-15 01:07:19,945 ERROR 1 validation error for UnbanChatMember
+user_id
+  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.5/v/int_type
