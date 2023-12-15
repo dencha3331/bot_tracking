@@ -7,6 +7,7 @@ from configs.config import bot
 # from db.models import Admin, Chat, Settings
 from db import crud
 from db.models import Users
+from logs import logger
 
 env: Env = Env()
 env.read_env()
@@ -29,8 +30,8 @@ class NotAdminFilter(BaseFilter):
         # return True
         user_id: int = message.from_user.id
         if user_id != int(env('ADMIN')) or user_id != int(env('ADMIN')):
-            print("zaebalo", user_id)
-            print(user_id != int(env('ADMIN')), user_id != int(env('ADMIN')))
+            logger.debug("zaebalo", user_id)
+            logger.debug(user_id != int(env('ADMIN')), user_id != int(env('ADMIN')))
             return True
         await message.delete()
         return False

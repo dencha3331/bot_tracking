@@ -8,6 +8,7 @@ from configs.config import bot, env
 from db import crud
 
 from db.models import Groups, Users
+from logs import logger
 
 chat_router: Router = Router()
 
@@ -21,22 +22,22 @@ async def add_chat(update: ChatMemberUpdated) -> None:
     :param update:
     :return:
     """
-    print("add_chat")
+    logger.debug("add_chat")
     chat_id: int = update.chat.id
     name = update.chat.full_name
     # try:
 
     is_admin = update.new_chat_member.status
-    print(is_admin)
+    logger.debug(is_admin)
     if is_admin == ChatMemberStatus.ADMINISTRATOR:
-        print("add is admin", chat_id)
+        logger.debug("add is admin", chat_id)
         link = await bot.create_chat_invite_link(chat_id)
         linked = link.invite_link
         chat = Groups(id=chat_id, nickname=name, link_chat=str(linked))
         crud.add_object(chat)
     # elif is_admin in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED]:
     else:
-        print("add is admin none")
+        logger.debug("add is admin none")
         crud.del_group(chat_id)
 
 
@@ -65,11 +66,11 @@ async def some_func(update: ChatMemberUpdated) -> None:
     group_is_news = [group.news_group for group in groups if group.id == group_id]
     chat_id = update.chat.id
     if chat_id in group_is_news:
-        print('news group')
+        logger.debug('news group')
         await _add_new_user(update, user)
         return
     if user and not user.tg_id:
-        print("not tg id")
+        logger.debug("not tg id")
         crud.update_user(user_nick=user_nickname, tg_id=user_id, first_name=update.from_user.first_name,
                          last_name=update.from_user.last_name)
     if user and user.pay:
@@ -78,17 +79,18 @@ async def some_func(update: ChatMemberUpdated) -> None:
         user_obj: Users = Users(nickname=user_nickname, tg_id=user_id, pay=False, ban=True)
         crud.add_object(user_obj)
 
-    print('ban')
+    logger.debug('ban')
     crud.update_user(user_nick=user_nickname, ban=True)
 
     for group in groups:
         if not group.news_group:
             try:
-                print('popitka bana', group.id, update.chat.id)
+                logger.debug('popitka bana', group.id, update.chat.id)
                 await bot.ban_chat_member(chat_id=group.id, user_id=user_id)
-                print('udacha ban')
+                logger.debug('udacha ban')
             except TelegramBadRequest as e:
-                print(e)
+                logger.debug(e)
+                logger.warning(e)
 
 
 async def _add_new_user(update: ChatMemberUpdated, user: Users) -> None:

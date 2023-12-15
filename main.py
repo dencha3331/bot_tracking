@@ -10,6 +10,7 @@ from handlers.admin_handlers import admin_router
 from handlers.chat_handlers import chat_router
 from keyboards.set_menu import set_main_menu
 from configs.config import bot
+from logs import logger
 
 
 async def main():
@@ -22,15 +23,14 @@ async def main():
 
     # dp.update.outer_middleware(AdminMiddleware())
     # admin_router.callback_query.middleware(AdminMiddleware())
-
     # dp.update.outer_middleware(UserPermissionMiddleware())
     # user_router.message.middleware(UserPermissionMiddleware())
-    dp.include_router(user_router)
 
+    dp.include_router(user_router)
     dp.include_router(chat_router)
 
     await set_main_menu(bot)
-    print("bot start")
+    logger.debug("bot start")
     await dp.start_polling(bot)
 
 

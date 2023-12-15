@@ -204,7 +204,6 @@ async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
 async def save_admin(message: Message, state: FSMContext) -> None:
     admins: list[str] = message.text.replace("@", '').split('\n')
     for admin in admins:
-        print(admin)
         if not admin.isdigit():
             await message.answer(f"{admin} это не  похоже на id\n"
                                  f"id можно узнать по соответствующей кнопки в меню")
@@ -254,17 +253,19 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.check_unpay_users))
 async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
+
+    processing_message = await callback.message.edit_text("Подождите запрос обрабатывается.....")
     answer: str = callback.data
     if answer == "yes":
         text: FSInputFile = await admin_hand_serv.check_unpay_users_ban()
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=text)
         except:
-            await callback.message.answer("Удалил")
+            await callback.message.answer("Некого удалять")
     else:
         await callback.message.edit_text("Не чего не делаю")
-
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=processing_message.message_id)
     await state.clear()
     # await add_users_start(callback, state)
 

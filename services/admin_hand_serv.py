@@ -17,10 +17,10 @@ env.read_env()
 
 
 async def unban_user(nickname: str) -> None:
-    print("unban user_start")
+    logger.debug("unban user_start")
     user: Users = crud.get_user_for_nickname(nickname)
     if not user:
-        print("not user")
+        logger.debug("not user")
         crud.save_pay_user(nickname)
         return
     if user.pay:
@@ -34,11 +34,11 @@ async def _unban_now(group: Groups, user: Users):
     if not group.news_group or group.news_group:
         try:
             await bot.unban_chat_member(chat_id=group.id, user_id=user.tg_id, only_if_banned=True)
-            print("unban complete")
+            logger.debug("unban complete")
         except TelegramBadRequest as e:
             logger.warning(e)
-            print('lose first unban')
-            print(e)
+            logger.debug(e)
+            logger.debug('lose first unban')
             permissions = ChatPermissions(
                 can_send_messages=True,
                 can_send_media_messages=True,
@@ -48,23 +48,23 @@ async def _unban_now(group: Groups, user: Users):
             await bot.restrict_chat_member(chat_id=group.id, user_id=user.tg_id, permissions=permissions)
         except Exception as e:
             logger.error(e)
-            print('not unban')
-            print(e)
+            logger.debug('not unban')
+            logger.debug(e)
 
 
 async def ban_user(nickname: str) -> None:
-    print('pre ban user')
+    logger.debug('pre ban user')
     user: Users = crud.get_user_for_nickname(nickname)
-    print(user.nickname)
+    logger.debug(user.nickname)
     if not user:
-        print(("not user"))
+        logger.debug("not user")
         return
     if not user.tg_id:
-        print("not id")
+        logger.debug("not id")
         crud.update_user(user_nick=nickname, pay=False)
         return
     if not user.pay:
-        print("ban user")
+        logger.debug("ban user")
         crud.ban_users(nickname)
         groups = crud.get_list_groups()
         for group in groups:
@@ -73,7 +73,7 @@ async def ban_user(nickname: str) -> None:
             try:
                 await bot.ban_chat_member(chat_id=group.id, user_id=user.tg_id)
             except TelegramForbiddenError as e:
-                print(e)
+                logger.error(e)
 
 
 async def check_unpay_users_ban() -> FSInputFile:
@@ -81,14 +81,14 @@ async def check_unpay_users_ban() -> FSInputFile:
     groups = crud.get_list_groups()
     pay_users_fom_db = crud.get_pay_users()
     admins_ids = crud.get_list_admins() + [int(env('ADMIN')), bot.id]
-    pay_users_id = [user.id for user in pay_users_fom_db]
+    pay_users_id = [user.id for user in pay_users_fom_db if user.id]
     for group in groups:
-        print("start get group")
+        logger.info("start get group")
         list_user: list[int] = await get_chat_members(group.id)
         list_user_group_without_admin = [user_id for user_id in list_user if user_id not in admins_ids]
         for user_group_id in list_user_group_without_admin:
             if user_group_id not in pay_users_id:
-                print("user_group id",user_group_id)
+                logger.info("user_group id", user_group_id)
                 user = await bot.get_chat_member(chat_id=group.id, user_id=user_group_id)
                 await bot.ban_chat_member(chat_id=group.id, user_id=user_group_id)
                 result.append(f"{user.user.first_name}\t{user.user.username}\t{user_group_id} "
