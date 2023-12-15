@@ -63,9 +63,16 @@ async def confirm(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.add_users), AdminFilter())
 async def save_users(message: Message, state: FSMContext) -> None:
-    users: list[str] = message.text.replace("@", '').split('\n')
+    # users: list[str] = message.text.replace("@", '').split('\n')
+    users: list[str] = message.text.split('\n')
     res_list = []
-    for nick in users:
+    for nick_str in users:
+        if '@' in nick_str:
+            nick = nick_str.replace('@', '')
+        elif '/' in nick_str:
+            nick = nick_str.split('/')[-1]
+        else:
+            nick = nick_str
         text_result = crud.add_users_by_nickname(nick)
         await admin_hand_serv.unban_user(nick)
         res_list.append(text_result)
@@ -97,9 +104,15 @@ async def confirm(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.message(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.del_users))
 async def del_user(message: Message, state: FSMContext) -> None:
-    users: list[str] = message.text.replace("@", '').split('\n')
+    users: list[str] = message.text.split('\n')
     res_list = []
-    for nick in users:
+    for nick_str in users:
+        if '@' in nick_str:
+            nick = nick_str.replace('@', '')
+        elif '/' in nick_str:
+            nick = nick_str.split('/')[-1]
+        else:
+            nick = nick_str
         text_result = crud.unpay_users_by_nickname(nick)
         await admin_hand_serv.ban_user(nick)
         res_list.append(text_result)
@@ -231,7 +244,8 @@ async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.del_admin), AdminFilter())
 async def del_admin(message: Message, state: FSMContext) -> None:
-    admins: list[str] = message.text.replace("@", '').split('\n')
+    # admins: list[str] = message.text.replace("@", '').split('\n')
+    admins: list[str] = message.text.split('\n')
     for admin in admins:
         if not admin.isdigit():
             await message.answer(f"{admin} это не  похоже на id\n"
@@ -290,3 +304,9 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     else:
         await callback.message.edit_text("Не отправляю")
     await state.clear()
+
+
+@admin_router.message(IsPrivateChat(), ~StateFilter(default_state), AdminFilter())
+async def del_admin(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("Воспользуйтесь кнопкой меню")

@@ -33,12 +33,13 @@ class Users(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger(), primary_key=True)
-    nickname: Mapped[str] = mapped_column(String(50), unique=True)
-    tg_id: Mapped[Optional[BigInteger]] = mapped_column(BigInteger())
+    nickname: Mapped[Optional[str]] = mapped_column(String(50), unique=True)
+    tg_id: Mapped[Optional[BigInteger]] = mapped_column(BigInteger(), unique=True)
     pay: Mapped[bool] = mapped_column(default=False)
     ban: Mapped[bool] = mapped_column(default=False)
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now())
+    user_link: Mapped[Optional[str]] = mapped_column(String(50))
     first_name: Mapped[Optional[str]] = mapped_column(String(50))
     last_name: Mapped[Optional[str]] = mapped_column(String(50))
 

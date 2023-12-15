@@ -46,7 +46,7 @@ async def get_links(message: Message, status: str) -> None:
                              f"выберите нужный пункт по кнопки 'menu' в левом нижнем углу")
 
 
-@user_router.message(IsPrivateChat(), NotAdminFilter())
+@user_router.message(IsPrivateChat(), NotAdminFilter(), StateFilter(default_state))
 async def all_user(message: Message) -> None:
     await message.delete()
     await message.answer(f"Чтобы получить доступ к ресурсам обратитесь к администратору")

@@ -30,7 +30,7 @@ async def main():
     dp.include_router(chat_router)
 
     await set_main_menu(bot)
-    logger.debug("bot start")
+    logger.info("bot start")
     await dp.start_polling(bot)
 
 
