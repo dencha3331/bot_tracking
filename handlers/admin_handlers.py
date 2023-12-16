@@ -1,4 +1,7 @@
+from typing import Sequence
+
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, Document, User
@@ -7,6 +10,7 @@ from aiogram.types import FSInputFile
 
 import keyboards.admin_hand_kb as keyboards
 from configs.config import bot
+from db.models import Groups
 from filters.filters import AdminFilter, IsPrivateChat
 from db import crud
 from services import admin_hand_serv
@@ -14,6 +18,11 @@ from states.FSMStates import FSMAdminState
 from keyboards import inline_kb
 
 admin_router: Router = Router()
+
+
+# @admin_router.message(F.content_type.in_(['new_chat_members', 'left_chat_member']))
+# async def delete(message):
+#     await bot.delete_message(message.chat.id, message.message_id)
 
 
 @admin_router.message(IsPrivateChat(), CommandStart(), AdminFilter(), StateFilter(default_state))
@@ -62,20 +71,20 @@ async def confirm(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.add_users), AdminFilter())
-async def save_users(message: Message, state: FSMContext) -> None:
-    # users: list[str] = message.text.replace("@", '').split('\n')
+async def save_users_end_unban(message: Message, state: FSMContext) -> None:
     users: list[str] = message.text.split('\n')
     res_list = []
     for nick_str in users:
         if '@' in nick_str:
-            nick = nick_str.replace('@', '')
+            nick = nick_str.replace('@', '').strip()
         elif '/' in nick_str:
-            nick = nick_str.split('/')[-1]
+            nick = nick_str.split('/')[-1].strip()
         else:
-            nick = nick_str
-        text_result = crud.add_users_by_nickname(nick)
+            nick = nick_str.strip()
+        # text_result = crud.add_users_by_nickname(nick)
         await admin_hand_serv.unban_user(nick)
-        res_list.append(text_result)
+        # res_list.append(text_result)
+        res_list.append(f"{nick} добавлен в оплаченные")
     await message.answer("\n".join(res_list))
 
     await state.clear()
@@ -108,14 +117,15 @@ async def del_user(message: Message, state: FSMContext) -> None:
     res_list = []
     for nick_str in users:
         if '@' in nick_str:
-            nick = nick_str.replace('@', '')
+            nick = nick_str.replace('@', '').strip()
         elif '/' in nick_str:
-            nick = nick_str.split('/')[-1]
+            nick = nick_str.split('/')[-1].strip()
         else:
-            nick = nick_str
-        text_result = crud.unpay_users_by_nickname(nick)
+            nick = nick_str.strip()
+        # text_result = crud.unpay_users_by_nickname(nick)
         await admin_hand_serv.ban_user(nick)
-        res_list.append(text_result)
+        # res_list.append(text_result)
+        res_list.append(f"{nick} удален из оплаченных и из групп")
     await message.answer("\n".join(res_list))
     await state.clear()
 
@@ -162,7 +172,8 @@ async def change_group_link(message: Message, state: FSMContext) -> None:
     await state.clear()
 
 
-@admin_router.callback_query(IsPrivateChat(), F.data == "make_news_group", AdminFilter())
+@admin_router.callback_query(IsPrivateChat(), F.data == "make_news_group",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     keyboard: InlineKeyboardMarkup = keyboards.change_link_group_keyboard()
@@ -197,7 +208,8 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await state.clear()
 
 
-@admin_router.callback_query(IsPrivateChat(), F.data == "add_admin", AdminFilter())
+@admin_router.callback_query(IsPrivateChat(), F.data == "add_admin",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text("Отправьте id или список id по одному на строку "
                                      "кого надо сделать администратором",
@@ -226,7 +238,8 @@ async def save_admin(message: Message, state: FSMContext) -> None:
     await state.clear()
 
 
-@admin_router.callback_query(IsPrivateChat(), F.data == "del_admin", AdminFilter())
+@admin_router.callback_query(IsPrivateChat(), F.data == "del_admin",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
 async def del_admin_start(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text("Отправьте id или список id по одному на строку "
                                      "кого надо удалить с администраторов",
@@ -244,7 +257,6 @@ async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.del_admin), AdminFilter())
 async def del_admin(message: Message, state: FSMContext) -> None:
-    # admins: list[str] = message.text.replace("@", '').split('\n')
     admins: list[str] = message.text.split('\n')
     for admin in admins:
         if not admin.isdigit():
@@ -256,25 +268,47 @@ async def del_admin(message: Message, state: FSMContext) -> None:
     await state.clear()
 
 
-@admin_router.callback_query(IsPrivateChat(), F.data == "check_and_ban_unpay_user", AdminFilter())
+@admin_router.callback_query(IsPrivateChat(), F.data == "check_and_ban_unpay_user",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def choice_group_for_check_pay_user(callback: CallbackQuery, state: FSMContext) -> None:
+    list_group: Sequence[Groups] = crud.get_list_groups()
+    buttons = {str(group.id): group.nickname for group in list_group}
+    buttons.update(all="Проверить все группы")
+    keyboard = inline_kb.create_inline_callback_data_kb(
+        1, **buttons, last_btn={'cancel': "Отмена"}
+    )
+    await callback.message.edit_text("Выберите группу для проверки", reply_markup=keyboard)
+    await state.set_state(FSMAdminState.choice_group_check)
+
+
+@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.choice_group_check),
+                             F.data == 'cancel', AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.message.edit_text("Подтвердите проверку",
+    await callback.message.edit_text("Не чего не делаю")
+    await state.clear()
+
+
+@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.choice_group_check),
+                             F.data == 'all', AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.message.edit_text("Подтвердите проверку по всем группам",
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
                                          2, yes="Да", no="Нет"
                                      ))
-    await state.set_state(FSMAdminState.check_unpay_users)
+    await state.set_state(FSMAdminState.check_unpay_users_all_group)
 
 
-@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.check_unpay_users))
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(),
+                             StateFilter(FSMAdminState.check_unpay_users_all_group))
 async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
 
     processing_message = await callback.message.edit_text("Подождите запрос обрабатывается.....")
     answer: str = callback.data
     if answer == "yes":
-        text: FSInputFile = await admin_hand_serv.check_unpay_users_ban()
+        text: FSInputFile = await admin_hand_serv.check_all_groups_not_pay_users_and_ban()
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=text)
-        except:
+        except TelegramBadRequest:
             await callback.message.answer("Некого удалять")
     else:
         await callback.message.edit_text("Не чего не делаю")
@@ -284,9 +318,41 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     # await add_users_start(callback, state)
 
 
-@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_pay_user", AdminFilter())
+@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.choice_group_check),
+                             AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.message.edit_text("Подтвердите отправку",
+    await state.update_data(id=str(callback.data))
+    await callback.message.edit_text("Подтвердите проверку по всем группам",
+                                     reply_markup=inline_kb.create_inline_callback_data_kb(
+                                         2, yes="Да", no="Нет"
+                                     ))
+    await state.set_state(FSMAdminState.check_unpay_users_one_group)
+
+
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(),
+                             StateFilter(FSMAdminState.check_unpay_users_one_group))
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    processing_message = await callback.message.edit_text("Подождите запрос обрабатывается.....")
+    answer: str = callback.data
+    data: dict = await state.get_data()
+    group_id: int = data['id']
+    if answer == "yes":
+        text: FSInputFile = await admin_hand_serv.check_group_not_pay_users_and_ban(int(group_id))
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=text)
+        except TelegramBadRequest:
+            await callback.message.answer("Некого удалять")
+    else:
+        await callback.message.edit_text("Не чего не делаю")
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=processing_message.message_id)
+    await state.clear()
+
+
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_pay_user",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.message.edit_text("Подтвердите отправку оплаченных пользователей",
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
                                          2, yes="Отправить", no="Не отправлять"
                                      ))
@@ -298,12 +364,98 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        admin_hand_serv.send_pay_user()
-        cat = FSInputFile("pay_users.txt")
-        await bot.send_document(chat_id=callback.message.chat.id, document=cat)
+        file: FSInputFile = admin_hand_serv.send_pay_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Нет оплаченных")
     else:
         await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
     await state.clear()
+
+
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_not_pay_user",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.message.edit_text("Подтвердите отправку неоплаченных пользователей",
+                                     reply_markup=inline_kb.create_inline_callback_data_kb(
+                                         2, yes="Отправить", no="Не отправлять"
+                                     ))
+    await state.set_state(FSMAdminState.send_file_not_pay_user)
+
+
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_not_pay_user))
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    answer: str = callback.data
+    if answer == "yes":
+        file: FSInputFile = admin_hand_serv.send_not_pay_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Нет неоплаченных")
+    else:
+        await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
+    await state.clear()
+
+
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_all_user",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.message.edit_text("Подтвердите отправку всех пользователей",
+                                     reply_markup=inline_kb.create_inline_callback_data_kb(
+                                         2, yes="Отправить", no="Не отправлять"
+                                     ))
+    await state.set_state(FSMAdminState.send_file_all_pay_user)
+
+
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_all_pay_user))
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    answer: str = callback.data
+    if answer == "yes":
+        file: FSInputFile = admin_hand_serv.send_all_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Никого нет")
+    else:
+        await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
+    await state.clear()
+
+
+@admin_router.callback_query(IsPrivateChat(), F.data == "help",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.message.edit_text("Пункт меню: Добавить юзеров в оплаченные.\n"
+                                     "При добавление юзера происходит его разблокировка по всем группам."
+                                     "(если юзер говорит что он не разблокирован пусть зайдет в бота и воспользуется "
+                                     "командой: Список групп)\n"
+                                     "Пункт меню: Удалить из оплаченных юзеров и из групп\n"
+                                     "При выборе этого пункта происходит блокировка юзера по всем группам\n"
+                                     "Пункт меню: Сменить пригласительную ссылку группы\n"
+                                     "При выборе этого пункта выберите группу в которой хотите сменить ссылку и "
+                                     "отправьте новую\n"
+                                     "Пункт меню: Сделать новостной (не удалять юзеров, сбор зашедших)\n"
+                                     "При выборе этого пункта не оплаченные пользователи не будут с нее удаляться, "
+                                     "а так же все новые пользователи пришедшее в нее будут сохранятся в базу\n"
+                                     "Пункты меню: Со скачиванием файлов отправят файлы в csv формате "
+                                     "соответствующие названию пункта\n"
+                                     "Пункт меню: Проверить безбилетников по группам и забанить\n"
+                                     "При выборе этого пункта предложит на выбор какую группу проверить на "
+                                     "неоплаченных пользователей(которых вы не внесли в базу) и всех кого нет"
+                                     "забанит и выкинет из группы\n"
+                                     "Пункты меню: Добавить и удалить админа бота\n"
+                                     "При выборе этого пункта вам потребуется id того кого вы хотите добавить. "
+                                     "Id можно получить по пункту 'Узнать id' по кнопки 'menu' в левом "
+                                     "нижнем углу\n"
+
+                                     )
+    await state.clear()
+
 
 
 @admin_router.message(IsPrivateChat(), ~StateFilter(default_state), AdminFilter())

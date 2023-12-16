@@ -1,5 +1,6 @@
 from aiogram import Bot
-from aiogram.types import BotCommand
+from aiogram.enums import BotCommandScopeType
+from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeAllPrivateChats
 
 
 async def set_main_menu(bot: Bot):
@@ -11,15 +12,10 @@ async def set_main_menu(bot: Bot):
                    description='Админ панель'),
         BotCommand(command='/cancel',
                    description='Отмена'),
-        # BotCommand(command='/add_users',
-        #            description='Добавить пользователей'),
-        # BotCommand(command='/del_users',
-        #            description='Удалить пользователей'),
         BotCommand(command='/id',
                    description='Узнать id'),
-        # BotCommand(command='/change_link',
-        #            description='Удалить пользователей'),
-        # BotCommand(command='/get_all_users',
-        #            description='Получить список пользователей'),
+        # BotCommand(command='/help',
+        #            description='Справка для администраторов'),
     ]
-    await bot.set_my_commands(main_menu_commands)
+
+    await bot.set_my_commands(main_menu_commands, scope=BotCommandScopeAllPrivateChats())

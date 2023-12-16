@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from aiogram import Dispatcher
 import asyncio
+
+from aiogram.types import BotCommandScopeDefault
 from redis.asyncio.client import Redis
 from aiogram.fsm.storage.redis import RedisStorage
 
@@ -28,7 +30,7 @@ async def main():
 
     dp.include_router(user_router)
     dp.include_router(chat_router)
-
+    # await bot.delete_my_commands(scope=BotCommandScopeDefault())
     await set_main_menu(bot)
     logger.info("bot start")
     await dp.start_polling(bot)

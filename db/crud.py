@@ -9,9 +9,9 @@ from configs.config import env
 from db.models import Admin, Groups, Users
 from logs import logger
 
-# engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
-engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-                       f"{env('DB_NAME')}?charset=utf8mb4", echo=True)
+engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+#                        f"{env('DB_NAME')}?charset=utf8mb4", echo=True)
 
 
 def get_list_admins() -> list[int]:
@@ -26,16 +26,16 @@ def get_list_admins() -> list[int]:
 
 def save_pay_user(user: str) -> bool:
     logger.debug(f"save_pay_user in crud.py")
-    try:
-        user_obj = Users(nickname=user, pay=True)
-        with Session(engine) as session:
-            session.add(user_obj)
-            session.commit()
-        logger.debug(f"save_pay_user in crud.py return True")
-        return True
-    except IntegrityError:
-        logger.debug(f"save_pay_user in crud.py return False")
-        return False
+    # try:
+    user_obj = Users(nickname=user, pay=True)
+    with Session(engine) as session:
+        session.add(user_obj)
+        session.commit()
+    logger.debug(f"save_pay_user in crud.py return True")
+    return True
+    # except IntegrityError:
+    #     logger.debug(f"save_pay_user in crud.py return False")
+    #     return False
 
 
 def add_object(obj) -> None:
@@ -63,7 +63,7 @@ def get_links_for_user() -> str:
     return all_group_str
 
 
-def update_user(user_nick: str, **value) -> None:
+def update_user_by_nickname(user_nick: str, **value) -> None:
     stmt = update(Users).where(Users.nickname == user_nick).values(value)
     logger.debug(f"crud.update_user({stmt})")
     with Session(engine) as session:
@@ -167,7 +167,7 @@ def unpay_users_by_nickname(nick) -> str:
 
 
 def ban_users(nickname):
-    stmt = update(Users).where(Users.nickname == nickname).values(ban=True)
+    stmt = update(Users).where(Users.nickname == nickname).values(ban=True, pay=False)
     logger.debug(f"ban_users in crud.py, stmt:\n {stmt}")
     with Session(engine) as session:
         session.execute(stmt)
@@ -175,7 +175,7 @@ def ban_users(nickname):
 
 
 def unban_user(nickname):
-    stmt = update(Users).where(Users.nickname == nickname).values(ban=False)
+    stmt = update(Users).where(Users.nickname == nickname).values(ban=False, pay=True)
     logger.debug(f"unban_user in crud.py, stmt:\n {stmt}")
     with Session(engine) as session:
         session.execute(stmt)
@@ -224,7 +224,7 @@ def some():
         with Session(engine) as session:
             session.execute(stmt)
             session.commit()
-        update_user("den", tg_id=123)
+        update_user_by_nickname("den", tg_id=123)
 
 
 def delete_user_by_id(tg_id):
@@ -250,3 +250,10 @@ def get_user_by_id(tg_id: int) -> Users:
         result = session.scalars(stmt)
         session.commit()
         return result.one()
+
+
+def update_user_by_id(user_id: int, **value):
+    stmt = update(Users).where(Users.id == user_id).values(value)
+    with Session(engine) as session:
+        session.execute(stmt)
+        session.commit()

@@ -31,15 +31,17 @@ class Admin(Base):
 
 class Users(Base):
     __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(BigInteger(), primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     nickname: Mapped[Optional[str]] = mapped_column(String(50), unique=True)
     tg_id: Mapped[Optional[BigInteger]] = mapped_column(BigInteger(), unique=True)
     pay: Mapped[bool] = mapped_column(default=False)
     ban: Mapped[bool] = mapped_column(default=False)
+    user_link: Mapped[Optional[str]] = mapped_column(String(50))
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now())
-    user_link: Mapped[Optional[str]] = mapped_column(String(50))
+    updated_date: Mapped[datetime.datetime] = mapped_column(nullable=False,
+                                                            server_default=func.current_timestamp(),
+                                                            server_onupdate=func.current_timestamp())
     first_name: Mapped[Optional[str]] = mapped_column(String(50))
     last_name: Mapped[Optional[str]] = mapped_column(String(50))
 
@@ -55,8 +57,8 @@ class Groups(Base):
         server_default=func.now())
 
 
-# engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+#                        f"{env('DB_NAME')}?charset=utf8mb4")
 
-engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-                       f"{env('DB_NAME')}?charset=utf8mb4")
 Base.metadata.create_all(engine)

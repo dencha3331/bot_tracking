@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import ChatMemberUpdated
@@ -60,6 +60,7 @@ async def chat_member_update(update: ChatMemberUpdated) -> None:
     :param update:
     :return:
     """
+    # await bot.delete_message(chat_id=update.chat.id, message_id=update.)
     logger.debug(f"{update.from_user.bot} \n{update.bot.id} {bot.id}")
     # if update.bot.id == bot.id:
     #     return
@@ -104,12 +105,12 @@ async def _add_new_user(update: ChatMemberUpdated, user: Users) -> None:
         return
     if user and not user.tg_id:
         try:
-            crud.update_user(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
-                             first_name=update.from_user.first_name, last_name=update.from_user.last_name)
+            crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
+                                         first_name=update.from_user.first_name, last_name=update.from_user.last_name)
         except (PendingRollbackError, IntegrityError):
             crud.delete_user_by_id(update.from_user.id)
-            crud.update_user(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
-                             first_name=update.from_user.first_name, last_name=update.from_user.last_name)
+            crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
+                                         first_name=update.from_user.first_name, last_name=update.from_user.last_name)
         logger.debug(f"start _add_new_user in chat_handler.py because user save or update "
                      f"in if user and not user.tg_id:user: {update.from_user.username} "
                      f"user id: {update.from_user.id} "
@@ -122,8 +123,8 @@ async def _add_new_user(update: ChatMemberUpdated, user: Users) -> None:
             crud.add_object(user_obj)
         except (PendingRollbackError, IntegrityError):
             crud.delete_user_by_id(update.from_user.id)
-            crud.update_user(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
-                             first_name=update.from_user.first_name, last_name=update.from_user.last_name)
+            crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
+                                         first_name=update.from_user.first_name, last_name=update.from_user.last_name)
     logger.debug(f"end _add_new_user in chat_handler.py because not user and now user save or update "
                  f"user: {update.from_user.username} user id: {update.from_user.id} "
                  f"chat: {update.chat.username}")
@@ -135,12 +136,12 @@ async def _user_without_tg_id_check(user: Users, update: ChatMemberUpdated) -> N
     if user and user.tg_id:
         logger.debug("not tg id")
         try:
-            crud.update_user(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
-                             first_name=update.from_user.first_name, last_name=update.from_user.last_name)
+            crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
+                                         first_name=update.from_user.first_name, last_name=update.from_user.last_name)
         except (PendingRollbackError, IntegrityError):
             crud.delete_user_by_id(update.from_user.id)
-            crud.update_user(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
-                             first_name=update.from_user.first_name, last_name=update.from_user.last_name)
+            crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id, user_link=user_link,
+                                         first_name=update.from_user.first_name, last_name=update.from_user.last_name)
     logger.debug(f"end _user_without_tg_id_check in chat_handler.py")
 
 
@@ -157,9 +158,9 @@ async def _save_ban_user(user: Users, update: ChatMemberUpdated) -> None:
             crud.delete_user_by_id(update.from_user.id)
             crud.add_object(user_obj)
     elif user and not user.ban:
-        crud.update_user(update.from_user.username, tg_id=update.from_user.id,
-                         user_link=user_link, first_name=update.from_user.first_name,
-                         last_name=update.from_user.last_name, ban=True, pay=False)
+        crud.update_user_by_nickname(update.from_user.username, tg_id=update.from_user.id,
+                                     user_link=user_link, first_name=update.from_user.first_name,
+                                     last_name=update.from_user.last_name, ban=True, pay=False)
     logger.debug(f"end _save_ban_user in chat_handler.py")
 
 
@@ -176,3 +177,8 @@ async def _ban_user_by_groups(groups: Sequence[Groups], update: ChatMemberUpdate
                 logger.debug(f"negative ban {group.nickname} {update.from_user.id} {update.from_user.username}")
                 logger.warning(e)
     logger.debug(f"end _ban_user_by_groups in chat_handler.py")
+
+
+@chat_router.message(F.content_type.in_(['new_chat_members', 'left_chat_member']))
+async def delete(message):
+    await bot.delete_message(message.chat.id, message.message_id)
