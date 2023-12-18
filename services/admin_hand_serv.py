@@ -156,6 +156,14 @@ async def _update_users_data_using_chat_member(list_db_users: list[Users],
     list_db_users = list_db_users[:]
     list_chat_member = list_chat_member[:]
     for chat_member in list_chat_member:
+        try:
+            user_link = f'https://t.me/{chat_member.user.username}' if chat_member.user.username else None
+            user_obj = Users(nickname=chat_member.user.username, tg_id=chat_member.user.id,
+                             user_link=user_link, first_name=chat_member.user.first_name,
+                             last_name=chat_member.user.last_name)
+            crud.add_object(user_obj)
+        except Exception as e:
+            print(e)
         for user_db in list_db_users:
             logger.debug(f"for user_db in users_fom_db: user_db: {user_db.nickname} "
                          f"chat_member: {chat_member.user.username} id: {chat_member.user.id}, "
@@ -164,6 +172,8 @@ async def _update_users_data_using_chat_member(list_db_users: list[Users],
                 logger.debug(f"if chat_member.user.username == user_db and not user_db.tg_id:")
                 await _update_db_user(chat_member, user_db)
                 list_db_users.remove(user_db)
+
+
 
 
 async def _update_db_user(chat_member: ChatMember, user_db: Users) -> None:

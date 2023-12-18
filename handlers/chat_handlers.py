@@ -30,7 +30,7 @@ async def add_chat(update: ChatMemberUpdated) -> None:
     """
     logger.debug(f"{update.chat.type}")
     logger.debug("start add_chat in chat_handlers.py")
-    print(update, "My.new")
+    print(update, "\nMy.new")
     chat_id: int = update.chat.id
     name = update.chat.full_name
     # try:
@@ -60,7 +60,7 @@ async def add_chat(update: ChatMemberUpdated) -> None:
 
 @chat_router.chat_member()
 async def chat_member_update(update: ChatMemberUpdated) -> None:
-    print(update, "member ")
+    print(update, "\nmember ")
     """
     Обработка запроса при вступлении в группы.
     Проверка на админа.
