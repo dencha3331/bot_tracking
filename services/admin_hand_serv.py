@@ -1,13 +1,15 @@
 import time
 
-from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest, TelegramMigrateToChat
 from aiogram.types import CallbackQuery, Message, ChatMemberUpdated, ChatPermissions, FSInputFile
 from environs import Env
 from pyrogram.types import ChatMember
 from sqlalchemy import Sequence
 from sqlalchemy.exc import PendingRollbackError, IntegrityError
 
-from configs.config import bot
+# from configs.config import bot
+from configs.config_bot import bot
+
 # from db.models import Admin, Chat, Settings
 from db import crud
 from db.models import Users, Groups
@@ -42,29 +44,30 @@ async def _unban_now(group: Groups, user: Users):
             logger.debug(f"try: ")
             await bot.unban_chat_member(chat_id=group.id, user_id=user.tg_id, only_if_banned=True)
             logger.debug(f"unban complete user {user.nickname} in try: ")
-        except TelegramBadRequest as e:
-            logger.debug(f"except TelegramBadRequest as e: user {user.nickname}")
-            logger.warning(e)
-            logger.debug(e)
-            logger.debug(f'lose first unban user {user.nickname}')
-            permissions = ChatPermissions(
-                can_send_messages=True,
-                can_send_media_messages=True,
-                can_send_other_messages=True,
-                can_add_web_page_previews=True
-            )
-            await bot.restrict_chat_member(chat_id=group.id, user_id=user.tg_id, permissions=permissions)
-        except Exception as e:
-            logger.error(e)
-            logger.debug(f'not unban user {user.nickname}')
-            logger.debug(e)
+        except (TelegramBadRequest, TelegramMigrateToChat) as e:
+            try:
+                logger.debug(f"except TelegramBadRequest as e: user {user.nickname}")
+                logger.warning(e)
+                logger.debug(e)
+                logger.debug(f'lose first unban user {user.nickname}')
+                permissions = ChatPermissions(
+                    can_send_messages=True,
+                    can_send_media_messages=True,
+                    can_send_other_messages=True,
+                    can_add_web_page_previews=True
+                )
+                await bot.restrict_chat_member(chat_id=group.id, user_id=user.tg_id, permissions=permissions)
+            except (TelegramBadRequest, TelegramMigrateToChat) as e:
+
+                logger.error(e)
+                logger.debug(f'not unban user {user.nickname}')
+                logger.debug(e)
     logger.debug(f"end _unban_now in admin_hand_serv.py user: {user.nickname}")
 
 
-async def ban_user(nickname: str) -> None:
+async def ban_user(nickname: str) -> None | str:
     logger.debug(f"start ban_user in admin_hand_serv.py user: {nickname}")
     user: Users = crud.get_user_for_nickname(nickname)
-    logger.debug(f"user from db: {user.nickname}")
     if not user:
         user_link = f'https://t.me/{nickname}'
         user = Users(nickname=nickname, ban=True, user_link=user_link)
@@ -73,12 +76,14 @@ async def ban_user(nickname: str) -> None:
                      f"because if not user:")
         return
     if not user.tg_id:
+        logger.debug(f"user from db: {user.nickname}")
         logger.debug(f"if not user.tg_id: crud.delete_user_by_nicname({nickname})")
         crud.update_user_by_nickname(user_nick=nickname, pay=False)
         return
     logger.debug(f"bane_user in admin_hand_serv call crud.ban_users({nickname})")
     crud.update_user_by_nickname(nickname, pay=False, ban=True)
     groups = crud.get_list_groups()
+    res = []
     for group in groups:
         logger.debug(f"for group in groups: group: {group.nickname} id {group.id} "
                      f"news: {group.news_group} user: {user.nickname} user id: {user.tg_id}")
@@ -86,27 +91,39 @@ async def ban_user(nickname: str) -> None:
             continue
         try:
             await bot.ban_chat_member(chat_id=group.id, user_id=user.tg_id)
-        except TelegramForbiddenError as e:
-            logger.debug(f"except TelegramForbiddenError as e: user {user.nickname}")
+            text = f"{user.nickname} удален из {group.nickname}"
+        except (TelegramForbiddenError, TelegramMigrateToChat) as e:
+            text = f"Не смог удалить  {user.nickname} для этой группы {group.nickname}"
+            logger.debug(f"except 1 TelegramForbiddenError as e: user {user.nickname}")
             logger.error(e)
+        except TelegramBadRequest as e:
+            text = f"Не смог удалить  {user.nickname} для этой группы {group.nickname}"
+            logger.debug(f"except 2 TelegramForbiddenError as e: user {user.nickname}")
+            logger.error(e)
+        if text:
+            res.append(text)
+
+    return '\n'.join(res)
 
 
-async def check_group_not_pay_users_and_ban(group_id: int):
+async def check_group_not_pay_users_and_ban(group: Groups) -> FSInputFile | None | str:
     ban_users_list = []
     logger.debug(f"start check_group_not_pay_users_and_ban in admin_hand_serv.py user")
-    group: int = group_id
+    group_id: int = group.id
     admins_ids: list[int] = crud.get_list_admins() + [int(env('ADMIN')), bot.id]
     users_fom_db: list[Users] = [user for user in crud.get_all_user()]
-    list_chat_member: list[ChatMember] = await get_chat_members(group)
-
+    list_chat_member: list[ChatMember] = await get_chat_members(group.id)
+    if not list_chat_member:
+        return "С группой что то не так."
     await _update_users_data_using_chat_member(users_fom_db, list_chat_member)
-
+    if group.news_group:
+        return
     list_member_without_admin = [member for member in list_chat_member
                                  if member.user.id not in admins_ids]
-    list_ban_users: list[str] = await _ban_users(list_member_without_admin,
-                                                 users_fom_db, group_id)
+    list_ban_users: list[ChatMember] = await _ban_users(list_member_without_admin,
+                                                        users_fom_db, group_id)
     ban_users_list += list_ban_users
-    return save_and_return_file_delete_users(ban_users_list)
+    return make_and_return_file_delete_users(ban_users_list, "delete_user_for_all_groups.csv")
 
 
 async def check_all_groups_not_pay_users_and_ban() -> FSInputFile:
@@ -126,11 +143,12 @@ async def check_all_groups_not_pay_users_and_ban() -> FSInputFile:
             continue
         list_member_without_admin = [member for member in list_chat_member
                                      if member.user.id not in admins_ids]
-        list_ban_users: list[str] = await _ban_users(list_member_without_admin,
-                                                     users_fom_db, group_id)
-        time.sleep(1)
+        list_ban_users: list[ChatMember] = await _ban_users(list_member_without_admin,
+                                                            users_fom_db, group_id)
+        time.sleep(4)
         ban_users_list += list_ban_users
-    return save_and_return_file_delete_users(ban_users_list)
+
+    return make_and_return_file_delete_users(ban_users_list)
 
 
 async def _update_users_data_using_chat_member(list_db_users: list[Users],
@@ -171,7 +189,7 @@ async def _update_db_user(chat_member: ChatMember, user_db: Users) -> None:
 
 async def _ban_users(list_member: list[ChatMember],
                      list_db_users: list[Users],
-                     group: int) -> list[str]:
+                     group: int) -> list[ChatMember]:
     result = []
     users_fom_db = list_db_users[:]
     pay_users_name = [user.nickname for user in users_fom_db if user.pay]
@@ -198,76 +216,69 @@ async def _ban_users(list_member: list[ChatMember],
             logger.debug(f"if chat_member.user.username not in pay_users_name:"
                          f" chat_member: {chat_member.user.username} "
                          f"call bot.ban_chat_member(chat_id={group}, user_id={member.user.id})")
-            crud.update_user_by_id(chat_member.user.id, ban=True)
+            crud.update_user_by_id(chat_member.user.id, {"ban": True})
             await bot.ban_chat_member(chat_id=group, user_id=member.user.id)
-            result.append(f"{member.user.first_name}; {member.user.username}; {member.user.id}; "
-                          f"удален из всех групп;")
+            result.append(member)
     return result
 
 
-def save_and_return_file_delete_users(list_str_users: list[str], path=None) -> FSInputFile:
-    path = path if path else 'delete_user.csv'
-    with open(path, "w") as file:
-        file.write("\n".join(list_str_users))
-    logger.debug(f"end check_unpay_users_ban in admin_hand_serv.py"
-                 f" return FSInputFile('delete_user.txt')")
+def make_and_return_file_delete_users(list_users: list[ChatMember], path=None) -> FSInputFile:
+    # users = crud.get_all_user()
+    path = 'ban_user_for all_group.csv' if not path else path
+    with open(path, "w", encoding='utf-8-sig') as file:
+        # file.write("\tUser name\tОплата\tБан\tuser id\n")
+        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
+        for member in list_users:
+            user = crud.get_user_by_id(member.user.id)
+            text = make_str_for_user(user)
+            file.write(text)
     return FSInputFile(path)
 
 
 def send_pay_user() -> FSInputFile:
     users = crud.get_all_user()
     path = 'pay_users.csv'
-    with open(path, "w") as file:
+    with open(path, "w", encoding='utf-8-sig') as file:
         # file.write("\tUser name\tОплата\tБан\tuser id\n")
+        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
         for user in users:
             if user.pay:
-                name = user.nickname if user.nickname else "нет"
-                pay = "оплачен" if user.pay else "не оплачен"
-                ban = "бан" if user.ban else "не забанен"
-                user_id = str(user.tg_id) if user.tg_id else "нет"
-                first = user.first_name if user.first_name else "нет"
-                last = user.last_name if user.first_name else "нет"
-                date_create = str(user.create_date)
-                updated_date = user.updated_date
-                file.write(f"{name}; {pay}; {ban}; {user_id}; {first}; "
-                           f"{last}; {date_create}; {updated_date};")
+                text = make_str_for_user(user)
+                file.write(text)
     return FSInputFile(path)
 
 
 def send_not_pay_user() -> FSInputFile:
     users = crud.get_all_user()
     path = 'not_pay_users.csv'
-    with open(path, "w") as file:
+    with open(path, "w", encoding='utf-8-sig') as file:
         # file.write("\tUser name\tОплата\tБан\tuser id\n")
+        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
         for user in users:
             if not user.pay:
-                name = user.nickname if user.nickname else "нет"
-                pay = "оплачен" if user.pay else "не оплачен"
-                ban = "бан" if user.ban else "не забанен"
-                user_id = str(user.tg_id) if user.tg_id else "нет"
-                first = user.first_name if user.first_name else "нет"
-                last = user.last_name if user.first_name else "нет"
-                date_create = str(user.create_date)
-                updated_date = user.updated_date
-                file.write(f"{name}; {pay}; {ban}; {user_id}; {first}; "
-                           f"{last}; {date_create}; {updated_date};")
+                text = make_str_for_user(user)
+                file.write(text)
     return FSInputFile(path)
 
 
 def send_all_user() -> FSInputFile:
     users = crud.get_all_user()
     path = 'all_users.csv'
-    with open(path, "w") as file:
+    with open(path, "w", encoding='utf-8-sig') as file:
         # file.write("\tUser name\tОплата\tБан\tuser id\n")
+        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
         for user in users:
-            name = user.nickname if user.nickname else "нет"
-            pay = "оплачен" if user.pay else "не оплачен"
-            ban = "бан" if user.ban else "не забанен"
-            user_id = str(user.tg_id) if user.tg_id else "нет"
-            first = user.first_name if user.first_name else "нет"
-            last = user.last_name if user.first_name else "нет"
-            date_create = str(user.create_date)
-            updated_date = user.updated_date
-            file.write(f"{name}; {pay}; {ban}; {user_id}; {first}; "
-                       f"{last}; {date_create}; {updated_date};")
+            text = make_str_for_user(user)
+            file.write(text)
     return FSInputFile(path)
+
+
+def make_str_for_user(user: Users) -> str:
+    name = user.nickname if user.nickname else "нет"
+    pay = "оплачен" if user.pay else "не оплачен"
+    ban = "бан" if user.ban else "не забанен"
+    user_id = str(user.tg_id) if user.tg_id else "нет"
+    first = user.first_name if user.first_name else "нет"
+    last = user.last_name if user.first_name else "нет"
+    date_create = str(user.create_date)
+    return f"{name}; {pay}; {ban}; {user_id}; {first}; {last}; {date_create};\n"

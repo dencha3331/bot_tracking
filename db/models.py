@@ -39,9 +39,9 @@ class Users(Base):
     user_link: Mapped[Optional[str]] = mapped_column(String(50))
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now())
-    updated_date: Mapped[datetime.datetime] = mapped_column(nullable=False,
-                                                            server_default=func.current_timestamp(),
-                                                            server_onupdate=func.current_timestamp())
+    # updated_date: Mapped[datetime.datetime] = mapped_column(nullable=False,
+    #                                                         server_default=func.current_timestamp(),
+    #                                                         server_onupdate=func.current_timestamp())
     first_name: Mapped[Optional[str]] = mapped_column(String(50))
     last_name: Mapped[Optional[str]] = mapped_column(String(50))
 
@@ -57,8 +57,22 @@ class Groups(Base):
         server_default=func.now())
 
 
-engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
-# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-#                        f"{env('DB_NAME')}?charset=utf8mb4")
+class Setting(Base):
+    __tablename__ = "settings"
+
+    id: Mapped[int] = mapped_column(BigInteger(), primary_key=True)
+    bot_token: Mapped[str] = mapped_column(String(50))
+    admin: Mapped[BigInteger] = mapped_column(BigInteger())
+    # host_db: Mapped[str] = mapped_column(String(50))
+    # db_user: Mapped[str] = mapped_column(String(50))
+    # db_password: Mapped[str] = mapped_column(String(50))
+    # db_name: Mapped[str] = mapped_column(String(50))
+    pyrogram_api_id: Mapped[str] = mapped_column(String(50))
+    pyrogram_api_hash: Mapped[str] = mapped_column(String(50))
+
+
+# engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+                       f"{env('DB_NAME')}?charset=utf8mb4")
 
 Base.metadata.create_all(engine)

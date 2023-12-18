@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from aiogram import Dispatcher
 import asyncio
+from configs.config_bot import bot
 
 from aiogram.types import BotCommandScopeDefault
 from redis.asyncio.client import Redis
@@ -11,7 +12,7 @@ from handlers.user_handlers import user_router
 from handlers.admin_handlers import admin_router
 from handlers.chat_handlers import chat_router
 from keyboards.set_menu import set_main_menu
-from configs.config import bot
+# from configs.config import bot
 from logs import logger
 
 

@@ -6,6 +6,7 @@ from aiogram.types import Message
 
 from db import crud
 from filters.filters import IsPrivateChat, IsPayMember, NotAdminFilter, AdminFilter
+from services.user_hand_serv import unban_user_button
 
 user_router: Router = Router()
 
@@ -23,9 +24,9 @@ async def command_start(message: Message) -> None:
         await message.answer("Пока нет групп")
         return
     await message.answer(text=text)
-    await message.answer("Если ранее у вас был неоплаченный абонемент, то после новой оплаты "
-                         "потребуется до 15 минут для автоматической разблокировки вашего аккаунта. "
-                         "После этого вы сможете присоединиться к группам.")
+    # await message.answer("Если ранее у вас был неоплаченный абонемент, то после новой оплаты "
+    #                      "потребуется до 15 минут для автоматической разблокировки вашего аккаунта. "
+    #                      "После этого вы сможете присоединиться к группам.")
     await message.answer(f"Добро пожаловать. Чтобы получить список ссылок  "
                          f"выберите нужный пункт по кнопки 'menu' в левом нижнем углу")
 
@@ -46,8 +47,24 @@ async def get_links(message: Message, status: str) -> None:
                              f"выберите нужный пункт по кнопки 'menu' в левом нижнем углу")
 
 
+@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('unblock'),
+                     StateFilter(default_state), IsPayMember())
+async def all_user(message: Message) -> None:
+    await unban_user_button(message)
+    await message.answer("Аккаунт разблокирован. Подождите до 10 минут перед присоединением к группе")
+
+
+@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('unblock'), StateFilter(default_state))
+async def all_user(message: Message) -> None:
+    await message.answer("Для разблокировки обратитесь к администратору")
+
+
 @user_router.message(IsPrivateChat(), NotAdminFilter(), StateFilter(default_state))
 async def all_user(message: Message) -> None:
     await message.delete()
     await message.answer(f"Чтобы получить доступ к ресурсам обратитесь к администратору")
+
+
+
+
 

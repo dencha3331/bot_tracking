@@ -4,7 +4,8 @@ from aiogram.types import CallbackQuery, Message, ChatMemberUpdated
 from environs import Env
 from sqlalchemy.exc import PendingRollbackError, IntegrityError
 
-from configs.config import bot
+# from configs.config import bot
+from configs.config_bot import bot
 # from db.models import Admin, Chat, Settings
 from db import crud
 from db.models import Users
@@ -75,11 +76,11 @@ class IsPayMember(BaseFilter):
         if not user:
             logger.debug(f"end NotAdminFilter in filters.py because not user in db return False")
             return False
-        if user and not user.tg_id:
-            await _update_user(user, message)
-            if user.pay:
-                logger.debug(f"call admin_hand_serv.unban_user({user_nick}) in NotAdminFilter")
-                await admin_hand_serv.unban_user(user_nick)
+        # if user and not user.tg_id:
+        #     await _update_user(user, message)
+        #     if user.pay:
+        #         logger.debug(f"call admin_hand_serv.unban_user({user_nick}) in NotAdminFilter")
+        #         await admin_hand_serv.unban_user(user_nick)
         if user.pay:
             logger.debug(f"end NotAdminFilter in filters.py user: {message.from_user.username} pay "
                          f"user id: {message.from_user.id} return True")

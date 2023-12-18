@@ -6,12 +6,12 @@ from sqlalchemy.exc import NoResultFound, IntegrityError, PendingRollbackError
 from sqlalchemy.orm import Session
 
 from configs.config import env
-from db.models import Admin, Groups, Users
+from db.models import Admin, Groups, Users, Setting
 from logs import logger
 
-engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
-# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-#                        f"{env('DB_NAME')}?charset=utf8mb4", echo=True)
+# engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+                       f"{env('DB_NAME')}?charset=utf8mb4", echo=True)
 
 
 def get_list_admins() -> list[int]:
@@ -80,6 +80,17 @@ def get_name_id_group() -> dict:
     return dict_group
 
 
+def news_or_not_group_id_name(news: bool) -> dict:
+    if news:
+        stmt = select(Groups).where(Groups.news_group).order_by(Groups.nickname)
+    else:
+        stmt = select(Groups).where(Groups.news_group.is_(False)).order_by(Groups.nickname)
+    logger.debug(f"get_name_id_group in crud.py, stmt:\n {stmt}")
+    with Session(engine) as session:
+        dict_group = {str(group.id): group.nickname for group in session.scalars(stmt)}
+        session.commit()
+    return dict_group
+
 def update_group_link(group_id: int, **param) -> bool:
     stmt = update(Groups).where(Groups.id == group_id).values(param)
     logger.debug(f"update_group_link in crud.py, stmt:\n {stmt}")
@@ -133,8 +144,8 @@ def add_users_by_nickname(nick: str) -> str:
     return f"{nick} добавлен в оплаченные"
 
 
-def update_group_status(group_id) -> None:
-    stmt = update(Groups).where(Groups.id == group_id).values(news_group=True)
+def update_group_status(group_id: int, param) -> None:
+    stmt = update(Groups).where(Groups.id == group_id).values(param)
     logger.debug(f"update_group_status in crud.py, stmt:\n {stmt}")
     with Session(engine) as session:
         session.execute(stmt)
@@ -252,8 +263,27 @@ def get_user_by_id(tg_id: int) -> Users:
         return result.one()
 
 
-def update_user_by_id(user_id: int, **value):
+def update_user_by_id(user_id: int, value):
     stmt = update(Users).where(Users.id == user_id).values(value)
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
+
+
+def get_group_by_title(group_title: str) -> Groups | None:
+    stmt = select(Groups).where(Groups.nickname == group_title)
+    with Session(engine) as session:
+        result = session.scalars(stmt)
+        session.commit()
+        try:
+            return result.one()
+        except NoResultFound:
+            return
+
+
+def get_settings():
+    stmt = select(Setting)
+    with Session(engine) as session:
+        res = session.scalars(stmt)
+        session.commit()
+        return res.one()
