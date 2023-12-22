@@ -174,8 +174,6 @@ async def _update_users_data_using_chat_member(list_db_users: list[Users],
                 list_db_users.remove(user_db)
 
 
-
-
 async def _update_db_user(chat_member: ChatMember, user_db: Users) -> None:
     user_link = f'https://t.me/{chat_member.user.username}' if chat_member.user.username else None
     try:
@@ -234,7 +232,7 @@ async def _ban_users(list_member: list[ChatMember],
 
 def make_and_return_file_delete_users(list_users: list[ChatMember], path=None) -> FSInputFile:
     # users = crud.get_all_user()
-    path = 'ban_user_for all_group.csv' if not path else path
+    path = 'ban_user_for_all_group.csv' if not path else path
     with open(path, "w", encoding='utf-8-sig') as file:
         # file.write("\tUser name\tОплата\tБан\tuser id\n")
         file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
@@ -245,38 +243,17 @@ def make_and_return_file_delete_users(list_users: list[ChatMember], path=None) -
     return FSInputFile(path)
 
 
-def send_pay_user() -> FSInputFile:
-    users = crud.get_all_user()
-    path = 'pay_users.csv'
+def send_users_data_file(pay: bool = None,  path: str = None) -> FSInputFile:
+    users_db = crud.get_all_user()
+    path = 'files/all_users.csv' if not path else path
+    if pay is None:
+        users: list[Users] = [user for user in users_db]
+    elif pay:
+        users: list[Users] = [user for user in users_db if user.pay]
+    else:
+        users: list[Users] = [user for user in users_db if not user.pay]
     with open(path, "w", encoding='utf-8-sig') as file:
-        # file.write("\tUser name\tОплата\tБан\tuser id\n")
-        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
-        for user in users:
-            if user.pay:
-                text = make_str_for_user(user)
-                file.write(text)
-    return FSInputFile(path)
-
-
-def send_not_pay_user() -> FSInputFile:
-    users = crud.get_all_user()
-    path = 'not_pay_users.csv'
-    with open(path, "w", encoding='utf-8-sig') as file:
-        # file.write("\tUser name\tОплата\tБан\tuser id\n")
-        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
-        for user in users:
-            if not user.pay:
-                text = make_str_for_user(user)
-                file.write(text)
-    return FSInputFile(path)
-
-
-def send_all_user() -> FSInputFile:
-    users = crud.get_all_user()
-    path = 'all_users.csv'
-    with open(path, "w", encoding='utf-8-sig') as file:
-        # file.write("\tUser name\tОплата\tБан\tuser id\n")
-        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; Имя; Фамилия; Добавлена;\n")
+        file.write(f"Никнайм; Статус оплаты; Ранее удален; Телеграм id; ссылка; Имя; Фамилия; Добавлена;\n")
         for user in users:
             text = make_str_for_user(user)
             file.write(text)
@@ -284,11 +261,12 @@ def send_all_user() -> FSInputFile:
 
 
 def make_str_for_user(user: Users) -> str:
-    name = user.nickname if user.nickname else "нет"
+    name = user.nickname if user.nickname else "нет UserName"
     pay = "оплачен" if user.pay else "не оплачен"
     ban = "бан" if user.ban else "не забанен"
-    user_id = str(user.tg_id) if user.tg_id else "нет"
-    first = user.first_name if user.first_name else "нет"
-    last = user.last_name if user.first_name else "нет"
+    user_id = str(user.tg_id) if user.tg_id else "нет id"
+    link = user.user_link
+    first = user.first_name if user.first_name else "нет first name"
+    last = user.last_name if user.first_name else "нет last name"
     date_create = str(user.create_date)
-    return f"{name}; {pay}; {ban}; {user_id}; {first}; {last}; {date_create};\n"
+    return f"{name}; {pay}; {ban}; {user_id}; {link}; {first}; {last}; {date_create};\n"
