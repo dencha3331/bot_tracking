@@ -52,7 +52,7 @@ async def all_user(message: Message) -> None:
 
 
 # ________________________________________________
-# _________ кнопка в админ меню ________admin_____
+# _________ кнопка в меню ________admin_____
 # ________________________________________________
 @admin_router.message(IsPrivateChat(), Command('admin'), AdminFilter(), StateFilter(default_state))
 async def add_users_start(message: Message, state: FSMContext) -> None:
@@ -63,7 +63,7 @@ async def add_users_start(message: Message, state: FSMContext) -> None:
 
 
 # ______________________________________________________
-# _________ кнопка в админ меню ______id________________
+# _________ кнопка в меню ______id________________
 # ______________________________________________________
 @admin_router.message(IsPrivateChat(), Command("id"))
 async def get_id_user(message: Message) -> None:
@@ -255,7 +255,7 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
         link = await bot.create_chat_invite_link(group_id)
         linked = link.invite_link
         crud.update_group_link(group_id, link_chat=str(linked))
-        await callback.message.edit_text(f"Новая ссылка {linked}")
+        await callback.message.edit_text(f"Новая ссылка {linked}", disable_web_page_preview=True)
     except TelegramBadRequest:
         await callback.message.edit_text(lexicon_admin["except_generate_link"])
     await state.clear()
@@ -361,73 +361,97 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await state.clear()
 
 
-# _____________________________________________________________________
-# ___________ кнопка меню _________ Добавить админа бота ______________
-# _____________________________________________________________________
-@admin_router.callback_query(IsPrivateChat(), F.data == "add_admin",
+# _____________________________________________________________________________________________
+# _______________ кнопка в админ меню ___  Скачать файл с оплаченными пользователями __________
+# _____________________________________________________________________________________________
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_pay_user",
                              StateFilter(FSMAdminState.menu), AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрашивает telegram id или отмену"""
-    await callback.message.edit_text(lexicon_admin["get_id_for_add_admin"],
+    """Запрос подтверждения на отправку файла с оплаченными пользователями"""
+    await callback.message.edit_text(lexicon_admin["send_file_pay_user"],
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
-                                         1, cancel="Отмена"
+                                         2, yes="Отправить", no="Не отправлять"
                                      ))
-    await state.set_state(FSMAdminState.add_admin)
+    await state.set_state(FSMAdminState.send_file_pay_user)
 
 
-@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.add_admin),
-                             F.data == "cancel", AdminFilter())
-async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
-    """Отмена добавления админа, сброс состояния"""
-    await callback.message.edit_text("Не добавляю")
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_pay_user))
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Получение данных с бд и отправка файла с оплаченными пользователями"""
+    await callback.answer()
+    answer: str = callback.data
+    if answer == "yes":
+        file: FSInputFile = admin_hand_serv.send_pay_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Нет оплаченных")
+    else:
+        await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
     await state.clear()
 
 
-@admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.add_admin), AdminFilter())
-async def save_admin(message: Message, state: FSMContext) -> None:
-    """Добавление админа ожидает на вход целочисленные данные 10 значный id"""
-    admins: list[str] = message.text.split('\n')
-    for admin in admins:
-        if not admin.isdigit() or len(admin) != 10:
-            await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
-            return
-        crud.add_admins_by_id(int(admin))
-        await message.answer(f"id: {str(admin)} теперь админ")
-    await state.clear()
-
-
-# ____________________________________________________________________
-# ___________ кнопка меню _________ Удаление админа бота _____________
-# ____________________________________________________________________
-@admin_router.callback_query(IsPrivateChat(), F.data == "del_admin",
+# __________________________________________________________________________________________
+# ________ кнопка в админ меню ________ Скачать файл с неоплаченными пользователями ________
+# __________________________________________________________________________________________
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_not_pay_user",
                              StateFilter(FSMAdminState.menu), AdminFilter())
-async def del_admin_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрашивает telegram id или отмену"""
-    await callback.message.edit_text(lexicon_admin["get_id_for_del_admin"],
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    """Запрос подтверждения на отправку файла с неоплаченными пользователями"""
+    await callback.message.edit_text(lexicon_admin["send_file_not_pay_user"],
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
-                                         1, cancel="Отмена"
+                                         2, yes="Отправить", no="Не отправлять"
                                      ))
-    await state.set_state(FSMAdminState.del_admin)
+    await state.set_state(FSMAdminState.send_file_not_pay_user)
 
 
-@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.del_admin),
-                             F.data == "cancel", AdminFilter())
-async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
-    """Отмена удаления админа, сброс состояния"""
-    await callback.message.edit_text("Не удаляю")
+@admin_router.callback_query(StateFilter(FSMAdminState.send_file_not_pay_user),
+                             IsPrivateChat(), AdminFilter())
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Получение данных с бд и отправка файла с неоплаченными пользователями"""
+    await callback.answer()
+    answer: str = callback.data
+    if answer == "yes":
+        file: FSInputFile = admin_hand_serv.send_not_pay_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Нет неоплаченных")
+    else:
+        await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
     await state.clear()
 
 
-@admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.del_admin), AdminFilter())
-async def del_admin(message: Message, state: FSMContext) -> None:
-    """Удаление админа ожидает на вход целочисленные данные 10 значный id"""
-    admins: list[str] = message.text.split('\n')
-    for admin in admins:
-        if not admin.isdigit():
-            await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
-            return
-        crud.del_admins_by_id(int(admin))
-        await message.answer(f"id: {str(admin)} теперь не админ")
+# ________________________________________________________________________________________
+# ________ кнопка в админ меню ______ Скачать файл со всеми пользователями _______________
+# ________________________________________________________________________________________
+@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_all_user",
+                             StateFilter(FSMAdminState.menu), AdminFilter())
+async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
+    """Запрос подтверждения на отправку файла с неоплаченными пользователями"""
+    await callback.message.edit_text(lexicon_admin["send_file_all_user"],
+                                     reply_markup=inline_kb.create_inline_callback_data_kb(
+                                         2, yes="Отправить", no="Не отправлять"
+                                     ))
+    await state.set_state(FSMAdminState.send_file_all_pay_user)
+
+
+@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_all_pay_user))
+async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Получение данных с бд и отправка файла со всеми пользователями"""
+    await callback.answer()
+    answer: str = callback.data
+    if answer == "yes":
+        file: FSInputFile = admin_hand_serv.send_all_user()
+        try:
+            await bot.send_document(chat_id=callback.message.chat.id, document=file)
+        except TelegramBadRequest:
+            await callback.message.answer("Никого нет")
+    else:
+        await callback.message.edit_text("Не отправляю")
+    await callback.message.delete()
     await state.clear()
 
 
@@ -530,97 +554,73 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await state.clear()
 
 
-# _____________________________________________________________________________________________
-# _______________ кнопка в админ меню ___  Скачать файл с оплаченными пользователями __________
-# _____________________________________________________________________________________________
-@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_pay_user",
+# _____________________________________________________________________
+# ___________ кнопка меню _________ Добавить админа бота ______________
+# _____________________________________________________________________
+@admin_router.callback_query(IsPrivateChat(), F.data == "add_admin",
                              StateFilter(FSMAdminState.menu), AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрос подтверждения на отправку файла с оплаченными пользователями"""
-    await callback.message.edit_text(lexicon_admin["send_file_pay_user"],
+    """Запрашивает telegram id или отмену"""
+    await callback.message.edit_text(lexicon_admin["get_id_for_add_admin"],
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
-                                         2, yes="Отправить", no="Не отправлять"
+                                         1, cancel="Отмена"
                                      ))
-    await state.set_state(FSMAdminState.send_file_pay_user)
+    await state.set_state(FSMAdminState.add_admin)
 
 
-@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_pay_user))
-async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Получение данных с бд и отправка файла с оплаченными пользователями"""
-    await callback.answer()
-    answer: str = callback.data
-    if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_pay_user()
-        try:
-            await bot.send_document(chat_id=callback.message.chat.id, document=file)
-        except TelegramBadRequest:
-            await callback.message.answer("Нет оплаченных")
-    else:
-        await callback.message.edit_text("Не отправляю")
-    await callback.message.delete()
+@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.add_admin),
+                             F.data == "cancel", AdminFilter())
+async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
+    """Отмена добавления админа, сброс состояния"""
+    await callback.message.edit_text("Не добавляю")
     await state.clear()
 
 
-# __________________________________________________________________________________________
-# ________ кнопка в админ меню ________ Скачать файл с неоплаченными пользователями ________
-# __________________________________________________________________________________________
-@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_not_pay_user",
-                             StateFilter(FSMAdminState.menu), AdminFilter())
-async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрос подтверждения на отправку файла с неоплаченными пользователями"""
-    await callback.message.edit_text(lexicon_admin["send_file_not_pay_user"],
-                                     reply_markup=inline_kb.create_inline_callback_data_kb(
-                                         2, yes="Отправить", no="Не отправлять"
-                                     ))
-    await state.set_state(FSMAdminState.send_file_not_pay_user)
-
-
-@admin_router.callback_query(StateFilter(FSMAdminState.send_file_not_pay_user),
-                             IsPrivateChat(), AdminFilter())
-async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Получение данных с бд и отправка файла с неоплаченными пользователями"""
-    await callback.answer()
-    answer: str = callback.data
-    if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_not_pay_user()
-        try:
-            await bot.send_document(chat_id=callback.message.chat.id, document=file)
-        except TelegramBadRequest:
-            await callback.message.answer("Нет неоплаченных")
-    else:
-        await callback.message.edit_text("Не отправляю")
-    await callback.message.delete()
+@admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.add_admin), AdminFilter())
+async def save_admin(message: Message, state: FSMContext) -> None:
+    """Добавление админа ожидает на вход целочисленные данные 10 значный id"""
+    admins: list[str] = message.text.split('\n')
+    for admin in admins:
+        if not admin.isdigit() or len(admin) != 10:
+            await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
+            return
+        crud.add_admins_by_id(int(admin))
+        await message.answer(f"id: {str(admin)} теперь админ")
     await state.clear()
 
 
-# ________________________________________________________________________________________
-# ________ кнопка в админ меню ______ Скачать файл со всеми пользователями _______________
-# ________________________________________________________________________________________
-@admin_router.callback_query(IsPrivateChat(), F.data == "send_file_all_user",
+# ____________________________________________________________________
+# ___________ кнопка меню _________ Удаление админа бота _____________
+# ____________________________________________________________________
+@admin_router.callback_query(IsPrivateChat(), F.data == "del_admin",
                              StateFilter(FSMAdminState.menu), AdminFilter())
-async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрос подтверждения на отправку файла с неоплаченными пользователями"""
-    await callback.message.edit_text(lexicon_admin["send_file_all_user"],
+async def del_admin_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Запрашивает telegram id или отмену"""
+    await callback.message.edit_text(lexicon_admin["get_id_for_del_admin"],
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
-                                         2, yes="Отправить", no="Не отправлять"
+                                         1, cancel="Отмена"
                                      ))
-    await state.set_state(FSMAdminState.send_file_all_pay_user)
+    await state.set_state(FSMAdminState.del_admin)
 
 
-@admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_all_pay_user))
-async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Получение данных с бд и отправка файла со всеми пользователями"""
-    await callback.answer()
-    answer: str = callback.data
-    if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_all_user()
-        try:
-            await bot.send_document(chat_id=callback.message.chat.id, document=file)
-        except TelegramBadRequest:
-            await callback.message.answer("Никого нет")
-    else:
-        await callback.message.edit_text("Не отправляю")
-    await callback.message.delete()
+@admin_router.callback_query(IsPrivateChat(), StateFilter(FSMAdminState.del_admin),
+                             F.data == "cancel", AdminFilter())
+async def save_users(callback: CallbackQuery, state: FSMContext) -> None:
+    """Отмена удаления админа, сброс состояния"""
+    await callback.message.edit_text("Не удаляю")
+    await state.clear()
+
+
+@admin_router.message(IsPrivateChat(), StateFilter(FSMAdminState.del_admin), AdminFilter())
+async def del_admin(message: Message, state: FSMContext) -> None:
+    """Удаление админа ожидает на вход целочисленные данные 10 значный id"""
+    admins: list[str] = message.text.split('\n')
+    for admin in admins:
+        if not admin.isdigit() or len(admin) != 10:
+            await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
+            return
+        crud.del_admins_by_id(int(admin))
+        await message.answer(f"id: {str(admin)} теперь не админ")
     await state.clear()
 
 
@@ -631,7 +631,7 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
                              StateFilter(FSMAdminState.menu), AdminFilter())
 async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await callback.message.edit_text()
+    await callback.message.edit_text(lexicon_admin['help'])
 
 
 # _________________________________________________________________________
