@@ -80,6 +80,15 @@ async def all_user(message: Message) -> None:
     await message.answer(lexicon_user["failure_unblock_filter"])
 
 
+# __________________________________________________________________
+# ________________ Кнопка в меню help ___________________________
+# __________________________________________________________________
+@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('help'), StateFilter(default_state))
+async def all_user(message: Message) -> None:
+    """Не прошел фильтр оплаты"""
+    await message.answer(lexicon_user["help"])
+
+
 # __________ Не прошел не один фильтр _____________________________
 @user_router.message(IsPrivateChat(), StateFilter(default_state))
 async def all_user(message: Message) -> None:

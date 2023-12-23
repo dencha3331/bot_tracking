@@ -1,23 +1,26 @@
 from aiogram import Bot
 from aiogram.enums import BotCommandScopeType
 from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeAllPrivateChats
+from lexicon import LEXICON
+
+lexicon_menu: dict[str] = LEXICON['menu']
 
 
 async def set_main_menu(bot: Bot):
     """Set list command menu button"""
     main_menu_commands = [
         BotCommand(command='/unblock',
-                   description='Разблокировка'),
+                   description=lexicon_menu['unblock']),
         BotCommand(command='/list_group',
-                   description='Список групп'),
+                   description=lexicon_menu['list_group']),
         BotCommand(command='/admin',
-                   description='Админ панель'),
+                   description=lexicon_menu['admin']),
         BotCommand(command='/cancel',
-                   description='Отмена'),
+                   description=lexicon_menu['cancel']),
         BotCommand(command='/id',
-                   description='Узнать id'),
+                   description=lexicon_menu['id']),
         BotCommand(command='/help',
-                   description='Справка для администраторов'),
+                   description=lexicon_menu['help']),
     ]
 
     await bot.set_my_commands(main_menu_commands, scope=BotCommandScopeAllPrivateChats())

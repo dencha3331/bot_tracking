@@ -7,8 +7,8 @@ from pyrogram.types import ChatMember
 from sqlalchemy import Sequence
 from sqlalchemy.exc import PendingRollbackError, IntegrityError
 
-# from configs.config import bot
-from configs.config_bot import bot
+from configs.config import bot
+# from configs.config_bot import bot
 
 # from db.models import Admin, Chat, Settings
 from db import crud
@@ -21,7 +21,8 @@ async def unban_user_button(message: Message):
     logger.debug(f"start unban_user_button in user_hand_serv.py user: {message.from_user.username}"
                  f" user id: {message.from_user.id}")
     user_nick: str = message.from_user.username
-    user: Users = crud.get_user_for_nickname(user_nick)
+    # user: Users = crud.get_user_for_nickname(user_nick)
+    user: Users = crud.get_user_by_id_or_nick(nick=user_nick)
     # if not user:
     #     logger.debug(f"end NotAdminFilter in filters.py because not user in db return False")
     #     return False
@@ -52,7 +53,8 @@ async def _update_user(user: Users, message: Message):
     except (PendingRollbackError, IntegrityError):
         logger.debug(f"except: crud.delete_user_by_id({user_id}) and "
                      f"crud.update_user({message.from_user.username})")
-        user_from_db: Users = crud.get_user_by_id(user_id)
+        # user_from_db: Users = crud.get_user_by_id(user_id)
+        user_from_db: Users = crud.get_user_by_id_or_nick(tg_id=user_id)
         crud.delete_user_by_id(user_id)
         crud.update_user_by_nickname(message.from_user.username, tg_id=message.from_user.id,
                                      user_link=user_link, first_name=message.from_user.first_name,

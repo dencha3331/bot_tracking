@@ -71,8 +71,8 @@ class Setting(Base):
     pyrogram_api_hash: Mapped[str] = mapped_column(String(50))
 
 
-# engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
-engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-                       f"{env('DB_NAME')}?charset=utf8mb4")
+engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+#                        f"{env('DB_NAME')}?charset=utf8mb4")
 
 Base.metadata.create_all(engine)

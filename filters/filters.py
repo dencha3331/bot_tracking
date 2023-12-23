@@ -5,12 +5,12 @@ from environs import Env
 from sqlalchemy.exc import PendingRollbackError, IntegrityError
 
 # from configs.config import bot
-from configs.config_bot import bot
+# from configs.config_bot import bot
 # from db.models import Admin, Chat, Settings
 from db import crud
 from db.models import Users
 from logs import logger
-from services import admin_hand_serv
+# from services import admin_hand_serv
 
 env: Env = Env()
 env.read_env()
@@ -22,7 +22,7 @@ class AdminFilter(BaseFilter):
         # return True
         user_id: int = message.from_user.id
 
-        if user_id == int(env('ADMIN')) or user_id in crud.get_list_admins():
+        if user_id == int(env('ADMIN')) or user_id in crud.get_list_admins_ids():
             return {"status": "admin"}
         return False
 
@@ -34,7 +34,7 @@ class NotAdminFilter(BaseFilter):
         logger.debug(f"start NotAdminFilter in filters.py user: {message.from_user.username}"
                      f" user id: {message.from_user.id}")
         user_id: int = message.from_user.id
-        if user_id != int(env('ADMIN')) or user_id not in crud.get_list_admins():
+        if user_id != int(env('ADMIN')) or user_id not in crud.get_list_admins_ids():
             logger.debug("zaebalo v filtrah")
             logger.debug(f"end NotAdminFilter in filters.py return True")
             return True
@@ -72,7 +72,8 @@ class IsPayMember(BaseFilter):
         logger.debug(f"start IsPayMember in filters.py user: {message.from_user.username}"
                      f" user id: {message.from_user.id}")
         user_nick: str = message.from_user.username
-        user: Users = crud.get_user_for_nickname(user_nick)
+        # user: Users = crud.get_user_for_nickname(user_nick)
+        user: Users = crud.get_user_by_id_or_nick(nick=user_nick)
         if not user:
             logger.debug(f"end NotAdminFilter in filters.py because not user in db return False")
             return False
@@ -102,7 +103,8 @@ async def _update_user(user: Users, message: Message):
     except (PendingRollbackError, IntegrityError):
         logger.debug(f"except: crud.delete_user_by_id({user_id}) and "
                      f"crud.update_user({message.from_user.username})")
-        user_from_db: Users = crud.get_user_by_id(user_id)
+        # user_from_db: Users = crud.get_user_by_id(user_id)
+        user_from_db: Users = crud.get_user_by_id_or_nick(tg_id=user_id)
         crud.delete_user_by_id(user_id)
         crud.update_user_by_nickname(message.from_user.username, tg_id=message.from_user.id,
                                      user_link=user_link, first_name=message.from_user.first_name,

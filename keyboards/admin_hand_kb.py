@@ -27,15 +27,17 @@ _buttons_menu = {
 
 
 def change_link_group_keyboard() -> InlineKeyboardMarkup:
-    all_groups: dict = crud.get_name_id_group()
+    # all_groups: dict = crud.get_name_id_group()
+    list_groups = crud.get_list_groups()
+    dict_group = {str(group.id): group.nickname for group in list_groups}
     keyboard: InlineKeyboardMarkup = inline_kb.create_inline_callback_data_kb(
-        1, **all_groups
+        1, **dict_group
     )
     return keyboard
 
 
 def make_news_link_group_keyboard(news: bool) -> InlineKeyboardMarkup:
-    all_groups: dict = crud.news_or_not_group_id_name(news)
+    all_groups: dict = crud.get_news_or_not_group_id_name(news)
     keyboard: InlineKeyboardMarkup = inline_kb.create_inline_callback_data_kb(
         1, **all_groups, last_btn={"cancel": lexicon_admin_kb['cancel']}
     )

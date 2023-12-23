@@ -8,12 +8,13 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.fsm.state import default_state
 from aiogram.types import FSInputFile
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 import keyboards.admin_hand_kb as keyboards
 from configs.config import bot
 # from configs.config_bot import bot
 
-from db.models import Groups
+from db.models import Groups, Admin
 from filters.filters import AdminFilter, IsPrivateChat
 from db import crud
 from services import admin_hand_serv
@@ -63,12 +64,21 @@ async def add_users_start(message: Message, state: FSMContext) -> None:
 
 
 # ______________________________________________________
-# _________ кнопка в меню ______id________________
+# _________ кнопка в меню ______ id ______________________
 # ______________________________________________________
 @admin_router.message(IsPrivateChat(), Command("id"))
 async def get_id_user(message: Message) -> None:
     await message.delete()
     await message.answer(str(message.from_user.id))
+
+
+# ______________________________________________________
+# _________ кнопка в меню ______ help ______________________
+# ______________________________________________________
+@admin_router.message(IsPrivateChat(), Command("help"), StateFilter(default_state), AdminFilter())
+async def get_id_user(message: Message) -> None:
+    await message.delete()
+    await message.answer(lexicon_admin['help_menu'])
 
 
 # ______________________________________________________________________
@@ -174,7 +184,7 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext):
     """При выборе возвращает клавиатуру со всеми группами"""
     await callback.answer()
     keyboard: InlineKeyboardMarkup = keyboards.change_link_group_keyboard()
-    await callback.message.edit_text(text="choose_group", reply_markup=keyboard)
+    await callback.message.edit_text(text=lexicon_admin["choose_group"], reply_markup=keyboard)
     await state.set_state(FSMAdminState.change_group_link_start)
 
 
@@ -183,8 +193,11 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     """Переходит в режим ожидания ссылки или отмена"""
     await callback.answer()
     data = callback.data
+    group = crud.get_group_by_title_or_id(group_id=int(data))
+    link = group.link_chat
     await state.update_data(id=int(data))
-    await callback.message.edit_text("Пришлите новую ссылку",
+    await callback.message.edit_text(f"Пришлите новую ссылку. Текущая: {link}",
+                                     disable_web_page_preview=True,
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
                                          1, "Отмена"
                                      ))
@@ -206,12 +219,17 @@ async def change_group_link(message: Message, state: FSMContext) -> None:
     data: dict = await state.get_data()
     group_id: int = data['id']
     link: str = message.text
-    save: bool = crud.update_group_link(group_id, link_chat=str(link))
-    if save:
-        await message.edit_text(f"Ссылка изменена на '{link}'")
-    else:
-        await message.edit_text("Не получилось!!! Попробуйте еще раз")
+    # save: bool = crud.update_group_link(group_id, link_chat=str(link))
+    # crud.update_group_link(group_id, link_chat=str(link))
+    crud.update_group_by_id(group_id, {'link_chat': str(link)})
+    # await message.delete()
+    await message.answer(f"Ссылка изменена на {link}", disable_web_page_preview=True)
     await state.clear()
+    # if save:
+    #     await message.answer(f"Ссылка изменена на '{link}'", disable_web_page_preview=True)
+    # else:
+    #     await message.answer("Не получилось!!! Попробуйте еще раз")
+    # await state.clear()
 
 
 # ___________________________________________________________________________________________
@@ -232,9 +250,12 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     """Ожидание подтверждения на генерацию ссылки """
     await callback.answer()
     data = callback.data
-    print(data)
+    # print(data)
+    group = crud.get_group_by_title_or_id(group_id=int(data))
+    link = group.link_chat
     await state.update_data(id=int(data))
-    await callback.message.edit_text("Мне сгенерировать новую ссылку?",
+    await callback.message.edit_text(f"Мне сгенерировать новую ссылку? Текущая: {link}",
+                                     disable_web_page_preview=True,
                                      reply_markup=inline_kb.create_inline_callback_data_kb(
                                          2, yes="Да", no="Нет"
                                      ))
@@ -254,7 +275,8 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
     try:
         link = await bot.create_chat_invite_link(group_id)
         linked = link.invite_link
-        crud.update_group_link(group_id, link_chat=str(linked))
+        # crud.update_group_link(group_id, link_chat=str(linked))
+        crud.update_group_by_id(group_id, {'link_chat': str(linked)})
         await callback.message.edit_text(f"Новая ссылка {linked}", disable_web_page_preview=True)
     except TelegramBadRequest:
         await callback.message.edit_text(lexicon_admin["except_generate_link"])
@@ -303,7 +325,7 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     group_id: int = data['id']
     answer: str = callback.data
     if answer == "yes":
-        crud.update_group_status(group_id, {"news_group": True})
+        crud.update_group_by_id(group_id, {"news_group": True})
         await callback.message.edit_text(lexicon_admin["set_news_group"])
     else:
         await callback.message.edit_text("Не меняю")
@@ -353,7 +375,7 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     group_id: int = data['id']
     answer: str = callback.data
     if answer == "yes":
-        crud.update_group_status(group_id, {"news_group": False})
+        crud.update_group_by_id(group_id, {"news_group": False})
         await callback.message.edit_text(lexicon_admin["set_simple_group"])
     else:
         await callback.message.edit_text("Не меняю")
@@ -376,12 +398,13 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @admin_router.callback_query(IsPrivateChat(), AdminFilter(), StateFilter(FSMAdminState.send_file_pay_user))
-async def change_group_link_start(callback: CallbackQuery, state: FSMContext) -> None:
+async def send_file_pay_users(callback: CallbackQuery, state: FSMContext) -> None:
     """Получение данных с бд и отправка файла с оплаченными пользователями"""
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_pay_user()
+        # file: FSInputFile = admin_hand_serv.send_pay_user()
+        file: FSInputFile = admin_hand_serv.send_users_data_file(pay=True, path="files/pay_users.csv")
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
         except TelegramBadRequest:
@@ -413,7 +436,8 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_not_pay_user()
+        # file: FSInputFile = admin_hand_serv.send_not_pay_user()
+        file: FSInputFile = admin_hand_serv.send_users_data_file(pay=False, path="files/not_pay_users.csv")
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
         except TelegramBadRequest:
@@ -444,7 +468,8 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        file: FSInputFile = admin_hand_serv.send_all_user()
+        file: FSInputFile = admin_hand_serv.send_users_data_file()
+        # file: FSInputFile = admin_hand_serv.send_all_user()
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
         except TelegramBadRequest:
@@ -584,8 +609,13 @@ async def save_admin(message: Message, state: FSMContext) -> None:
         if not admin.isdigit() or len(admin) != 10:
             await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
             return
-        crud.add_admins_by_id(int(admin))
-        await message.answer(f"id: {str(admin)} теперь админ")
+        admin_obj: Admin = Admin(id=int(admin))
+        try:
+            crud.add_object(admin_obj)
+            await message.answer(f"id: {str(admin)} теперь админ")
+        except IntegrityError:
+            await message.answer(f"id: {str(admin)} уже админ")
+        # crud.add_admins_by_id(int(admin))
     await state.clear()
 
 
