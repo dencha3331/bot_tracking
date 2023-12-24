@@ -15,19 +15,5 @@ class AdminMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: Dict[str, Any],
     ) -> Any:
-        print("admin hand")
-        chat: Chat = data['event_chat']
-        if chat.type != 'private':
-            print(chat.type)
-            return
-        # if not isinstance(event, CallbackQuery):
-        #     return await handler(event, data)
-        admin_data: User = data["event_from_user"]
-        if admin_data.id == int(env('ADMIN')):
-            print("admin cconst")
-            data['admin'] = True
-            return await handler(event, data)
-        admin: Admin = crud.get_admin_by_id(admin_data.id)
-        if not admin:
-            return
+
         return await handler(event, data)

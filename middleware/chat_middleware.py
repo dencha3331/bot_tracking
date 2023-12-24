@@ -12,6 +12,5 @@ class UserInternalIdMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: Dict[str, Any],
     ) -> Any:
-        user = data["event_from_user"]
-        data["internal_id"] = self.get_internal_id(user.id)
+
         return await handler(event, data)

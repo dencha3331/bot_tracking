@@ -1,8 +1,8 @@
-from typing import Sequence, List
+from typing import Sequence
 
-from sqlalchemy import TextClause, text, create_engine, ScalarResult
-from sqlalchemy import func, select, update, delete, Update, Select, or_
-from sqlalchemy.exc import NoResultFound, IntegrityError, PendingRollbackError
+from sqlalchemy import create_engine
+from sqlalchemy import select, update, delete, or_
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from configs.config import env
@@ -17,19 +17,6 @@ engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
 # __________________________________________________________
 # _____________________ Users ______________________________
 # __________________________________________________________
-# def save_pay_user(user: str) -> bool:
-#     logger.debug(f"save_pay_user in crud.py")
-#     # try:
-#     user_obj = Users(nickname=user, pay=True)
-#     with Session(engine) as session:
-#         session.add(user_obj)
-#         session.commit()
-#     logger.debug(f"save_pay_user in crud.py return True")
-#     return True
-#     # except IntegrityError:
-#     #     logger.debug(f"save_pay_user in crud.py return False")
-#     #     return False
-
 
 def update_user_by_nickname(user_nick: str, **value) -> None:
     """Обновить данные пользователя по telegram UserName"""
@@ -46,27 +33,6 @@ def update_user_by_id(user_id: int, value) -> None:
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
-
-
-# def get_user_for_nickname(user_nick: str) -> Users | None:
-#     # stmt = select(Users).where(Users.nickname == user_nick or Users.tg_id == 1)
-#     stmt = select(Users).where(Users.nickname == user_nick)
-#     logger.debug(f"get_user_for_nickname in crud.py, stmt:\n {stmt}")
-#     with Session(engine) as session:
-#         result = session.scalars(stmt)
-#         try:
-#             return result.one()
-#         except NoResultFound:
-#             return
-#
-#
-# def get_user_by_id(tg_id: int) -> Users:
-#     stmt = select(Users).where(Users.tg_id == tg_id)
-#     logger.debug(f"get_user_by_id in crud.py, stmt:\n {stmt}")
-#     with Session(engine) as session:
-#         result = session.scalars(stmt)
-#         session.commit()
-#         return result.one()
 
 
 def get_user_by_id_or_nick(tg_id: int = 12, nick: str = '') -> Users | None:
@@ -164,29 +130,6 @@ def update_group_by_id(group_id: int, param) -> None:
         session.commit()
 
 
-#
-# def get_name_id_group() -> dict:
-#     stmt = select(Groups).order_by(Groups.nickname)
-#     logger.debug(f"get_name_id_group in crud.py, stmt:\n {stmt}")
-#     with Session(engine) as session:
-#         dict_group = {str(group.id): group.nickname for group in session.scalars(stmt)}
-#         session.commit()
-#     return dict_group
-#
-#
-# def update_group_link(group_id: int, **param) -> bool:
-#     stmt = update(Groups).where(Groups.id == group_id).values(param)
-#     logger.debug(f"update_group_link in crud.py, stmt:\n {stmt}")
-#     try:
-#         with Session(engine) as session:
-#             session.execute(stmt)
-#             session.commit()
-#         return True
-#     except Exception as e:
-#         print(e)
-#         return False
-#
-
 # __________________________________________________
 # ______________ Admin _____________________________
 # __________________________________________________
@@ -221,14 +164,6 @@ def del_admins_by_id(param) -> None:
         session.execute(stmt)
         session.commit()
 
-
-#
-# def add_admins_by_id(users_id: int) -> None:
-#     admin: Admin = Admin(id=users_id)
-#     with Session(engine) as session:
-#         session.add(admin)
-#         session.commit()
-#
 
 # _______________________________________________________
 # _________________ Others ______________________________

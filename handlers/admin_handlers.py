@@ -219,17 +219,9 @@ async def change_group_link(message: Message, state: FSMContext) -> None:
     data: dict = await state.get_data()
     group_id: int = data['id']
     link: str = message.text
-    # save: bool = crud.update_group_link(group_id, link_chat=str(link))
-    # crud.update_group_link(group_id, link_chat=str(link))
     crud.update_group_by_id(group_id, {'link_chat': str(link)})
-    # await message.delete()
     await message.answer(f"Ссылка изменена на {link}", disable_web_page_preview=True)
     await state.clear()
-    # if save:
-    #     await message.answer(f"Ссылка изменена на '{link}'", disable_web_page_preview=True)
-    # else:
-    #     await message.answer("Не получилось!!! Попробуйте еще раз")
-    # await state.clear()
 
 
 # ___________________________________________________________________________________________
@@ -250,7 +242,6 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     """Ожидание подтверждения на генерацию ссылки """
     await callback.answer()
     data = callback.data
-    # print(data)
     group = crud.get_group_by_title_or_id(group_id=int(data))
     link = group.link_chat
     await state.update_data(id=int(data))
@@ -275,7 +266,6 @@ async def change_group_link(callback: CallbackQuery, state: FSMContext) -> None:
     try:
         link = await bot.create_chat_invite_link(group_id)
         linked = link.invite_link
-        # crud.update_group_link(group_id, link_chat=str(linked))
         crud.update_group_by_id(group_id, {'link_chat': str(linked)})
         await callback.message.edit_text(f"Новая ссылка {linked}", disable_web_page_preview=True)
     except TelegramBadRequest:
@@ -403,7 +393,6 @@ async def send_file_pay_users(callback: CallbackQuery, state: FSMContext) -> Non
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        # file: FSInputFile = admin_hand_serv.send_pay_user()
         file: FSInputFile = admin_hand_serv.send_users_data_file(pay=True, path="files/pay_users.csv")
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
@@ -436,7 +425,6 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     await callback.answer()
     answer: str = callback.data
     if answer == "yes":
-        # file: FSInputFile = admin_hand_serv.send_not_pay_user()
         file: FSInputFile = admin_hand_serv.send_users_data_file(pay=False, path="files/not_pay_users.csv")
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
@@ -469,7 +457,6 @@ async def change_group_link_start(callback: CallbackQuery, state: FSMContext) ->
     answer: str = callback.data
     if answer == "yes":
         file: FSInputFile = admin_hand_serv.send_users_data_file()
-        # file: FSInputFile = admin_hand_serv.send_all_user()
         try:
             await bot.send_document(chat_id=callback.message.chat.id, document=file)
         except TelegramBadRequest:
@@ -606,7 +593,7 @@ async def save_admin(message: Message, state: FSMContext) -> None:
     """Добавление админа ожидает на вход целочисленные данные 10 значный id"""
     admins: list[str] = message.text.split('\n')
     for admin in admins:
-        if not admin.isdigit() or len(admin) != 10:
+        if not admin.isdigit() or 8 < len(admin) < 12:
             await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
             return
         admin_obj: Admin = Admin(id=int(admin))
@@ -615,7 +602,6 @@ async def save_admin(message: Message, state: FSMContext) -> None:
             await message.answer(f"id: {str(admin)} теперь админ")
         except IntegrityError:
             await message.answer(f"id: {str(admin)} уже админ")
-        # crud.add_admins_by_id(int(admin))
     await state.clear()
 
 
@@ -646,7 +632,7 @@ async def del_admin(message: Message, state: FSMContext) -> None:
     """Удаление админа ожидает на вход целочисленные данные 10 значный id"""
     admins: list[str] = message.text.split('\n')
     for admin in admins:
-        if not admin.isdigit() or len(admin) != 10:
+        if not admin.isdigit() or 8 < len(admin) < 12:
             await message.answer(f"{admin} {lexicon_admin['is_not_id']}")
             return
         crud.del_admins_by_id(int(admin))

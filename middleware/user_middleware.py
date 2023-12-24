@@ -12,8 +12,6 @@ class UserPermissionMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: Dict[str, Any],
     ) -> Any:
-        chat: Chat = data['event_chat']
-        if chat.type != 'private':
-            return
+
         return await handler(event, data)
 
