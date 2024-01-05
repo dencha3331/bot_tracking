@@ -5,13 +5,10 @@ from pyrogram.types import ChatMember
 from configs.config import env
 from logs import logger
 
-# from configs.config_bot import settings
 
-
+bot_token = env('BOT_TOKEN')
 api_id = int(env('PYROGRAM_API_ID'))
 api_hash = env("PYROGRAM_API_HASH")
-bot_token = env('BOT_TOKEN')
-# bot_token = settings.bot_token
 
 
 async def get_chat_members(chat_id) -> list[ChatMember] | None:

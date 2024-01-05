@@ -6,7 +6,12 @@ menu:
   id: Узнать id
   help: Справка
 
+clear_state_hand:
+  nothing_cancel: Отменять нечего
+  cancel: Отмена
+
 user_handler:
+  no_groups_yet: Пока нет групп
   welcome: Добро пожаловать. Чтобы получить список ссылок выберите нужный пункт по 
            кнопки 'menu' в левом нижнем углу
   info_list_group: Чтобы получить список ссылок повторно выберите нужный пункт по 
@@ -34,17 +39,40 @@ admin_hand_kb:
   cancel: Отмена
 
 admin_handler:
+  yes: Да
+  no: Нет
+  send: Отправить
+  do_not_send: Не отправлять
+  cancel: Отмена
+  not_change: Не меняем
+  no_paid: Нет оплаченных
+  no_unpaid: Нет неоплаченных
+  not_add: Не добавляю
+  not_del: Не удаляю
+  nobody_here: Никого нет
+  i_do_not_send: Не отправляю
+  not_doing_anything: Ничего не делаю
+  now_not_admin: теперь не админ
+  now_admin: теперь админ
+  already_an_admin: уже админ
+  group_is_news: Группа новостная
+  telegram_error: Ошибка Телеграмм
+  to_many_request_wait: "Слишком много запросов ждите {seconds} сек"
+  link_changed_to: Ссылка изменена на
+  new_link: Новая ссылка
+  added_in_pay_users: добавлен в оплаченные
+  deleted_from_pay_users: удален из оплаченных
+  send_a_new_link_current: Пришлите новую ссылку. Текущая
   unblock: Вы админ эта кнопка для пользователей
   start: Вы админ воспользуйтесь кнопкой 'menu'
   help_menu: Эта кнопка для пользователей если вам необходима справка по работе бота 
              выберите справка в админ панели
   add_users: Добавить юзера(ов)
   add_pay_user: Отправьте один NickName или список для добавления в оплаченные
-  not_add: Не добавляю
   del_users: Удалить юзера(ов)
   del_not_pay_users: Отправьте один NickName или список для удаления
-  not_del: Не удаляю
   choose_group: Выберите группу
+  should_i_generate_a_new_link_current: Мне сгенерировать новую ссылку? Текущая
   except_generate_link: Для этой группы нельзя сгенерировать ссылку. Добавьте в ручную.
   make_news_group?: Сделать группу новостной (не удалять юзеров)?
   set_news_group: Группа теперь новостная(пользователи не будут удаляться)

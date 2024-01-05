@@ -1,18 +1,20 @@
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import Message
 from aiogram.fsm.state import default_state
-from aiogram import Router, F
+from aiogram import Router
 
+from lexicon import LEXICON
 
 clear_state_rout: Router = Router()
+lexicon_clear: dict[str, str] = LEXICON['clear_state_hand']
 
 
 @clear_state_rout.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message) -> None:
     """Command handler "/cancel" in default state"""
     await message.delete()
-    await message.answer("Отменять нечего")
+    await message.answer(lexicon_clear['nothing_cancel'])
 
 
 @clear_state_rout.message(Command(commands='cancel'), ~StateFilter(default_state))
@@ -20,6 +22,6 @@ async def process_cancel_command_state(message: Message, state: FSMContext) -> N
     """Handler of "/cancel" command in any states"""
 
     await message.delete()
-    await message.answer("Отмена")
+    await message.answer(lexicon_clear['cancel'])
     await state.clear()
 

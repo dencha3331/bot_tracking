@@ -2,7 +2,7 @@
 from aiogram import Dispatcher
 import asyncio
 
-from aiogram.types import BotCommandScopeDefault
+# from aiogram.types import BotCommandScopeDefault
 from redis.asyncio.client import Redis
 from aiogram.fsm.storage.redis import RedisStorage
 
@@ -11,9 +11,8 @@ from handlers.user_handlers import user_router
 from handlers.admin_handlers import admin_router
 from handlers.chat_handlers import chat_router
 from keyboards.set_menu import set_main_menu
-# from configs.config_bot import bot
-from configs.config import bot
 from logs import logger
+from configs.config import bot
 
 
 async def main():
@@ -23,11 +22,6 @@ async def main():
     dp: Dispatcher = Dispatcher(storage=storage)
     dp.include_router(clear_state_rout)
     dp.include_router(admin_router)
-
-    # dp.update.outer_middleware(AdminMiddleware())
-    # admin_router.callback_query.middleware(AdminMiddleware())
-    # dp.update.outer_middleware(UserPermissionMiddleware())
-    # user_router.message.middleware(UserPermissionMiddleware())
 
     dp.include_router(user_router)
     dp.include_router(chat_router)

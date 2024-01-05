@@ -1,15 +1,16 @@
 from typing import Optional
-
-from sqlalchemy import ForeignKey, JSON, create_engine, func
+from sqlalchemy import create_engine, func
 from sqlalchemy import String, BigInteger
-from sqlalchemy.dialects.sqlite import json
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
 import datetime
 
-from configs.config import env
+# from configs.config import env
+
+engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
+# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
+#                        f"{env('DB_NAME')}?charset=utf8mb4")
 
 
 class Base(DeclarativeBase):
@@ -63,9 +64,5 @@ class Setting(Base):
     pyrogram_api_id: Mapped[str] = mapped_column(String(50))
     pyrogram_api_hash: Mapped[str] = mapped_column(String(50))
 
-
-engine = create_engine("sqlite+pysqlite:///bot_sqlite.db", echo=True)
-# engine = create_engine(f"mysql+pymysql://{env('DB_USER')}:{env('DB_PASSWORD')}@{env('HOST')}/"
-#                        f"{env('DB_NAME')}?charset=utf8mb4")
 
 Base.metadata.create_all(engine)

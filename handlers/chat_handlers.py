@@ -3,9 +3,8 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import ChatMemberUpdated, Message
 
 from services import chat_hand_serv
-from configs.config import bot
-# from configs.config_bot import bot
 from db import crud
+from configs.config import bot
 
 chat_router: Router = Router()
 

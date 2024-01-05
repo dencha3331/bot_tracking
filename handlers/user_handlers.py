@@ -1,8 +1,7 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.filters import Command, CommandStart, or_f, StateFilter
 from aiogram.fsm.state import default_state
 from aiogram.types import Message
-# from magic_filter import F
 
 from db import crud
 from filters.filters import IsPrivateChat, IsPayMember, NotAdminFilter, AdminFilter
@@ -17,6 +16,7 @@ lexicon_user = LEXICON['user_handler']
 @user_router.message(IsPrivateChat(), StateFilter(default_state), Command('admin'), NotAdminFilter())
 async def add_users_start(message: Message) -> None:
     """Блокировка для пользователей кнопки admin в меню"""
+    await message.delete()
     await message.answer(f"Вы не админ!!!!!")
 
 
@@ -28,7 +28,7 @@ async def command_start(message: Message) -> None:
     """Получает список групп из бд и отправляет сообщением"""
     text: str = crud.get_links_for_user()
     if not text:
-        await message.answer("Пока нет групп")
+        await message.answer(lexicon_user['no_groups_yet'])
         return
     await message.answer(text=text)
     await message.answer(lexicon_user['welcome'])
@@ -39,12 +39,12 @@ async def command_start(message: Message) -> None:
 # ___________________________________________________________________
 @user_router.message(IsPrivateChat(), Command("list_group"), StateFilter(default_state),
                      or_f(AdminFilter(), IsPayMember()))
-async def get_links(message: Message, status: str) -> None:
+async def get_links(message: Message) -> None:
     """Получает список групп из бд и отправляет сообщением без превью. Разбил на несколько сообщений
     по 30 групп в сообщении т.к. телеграм не позволяет отправлять длинные сообщения"""
     text: str = crud.get_links_for_user()
     if not text:
-        await message.answer("Пока нет групп")
+        await message.answer(lexicon_user['no_groups_yet'])
         return
     if len(text.split("\n")) > 30:
         res = []
@@ -58,15 +58,14 @@ async def get_links(message: Message, status: str) -> None:
             await message.answer("\n".join(res), disable_web_page_preview=True)
     else:
         await message.answer(text=text, disable_web_page_preview=True)
-    if status != "admin":
         await message.answer(lexicon_user["info_list_group"])
 
 
 # __________________________________________________________________
 # ________________ Кнопка в меню unblock ___________________________
 # __________________________________________________________________
-@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('unblock'),
-                     StateFilter(default_state), IsPayMember())
+@user_router.message(IsPrivateChat(), Command('unblock'), StateFilter(default_state),
+                     IsPayMember(), NotAdminFilter())
 async def all_user(message: Message) -> None:
     """При удачной проверки на оплату в фильтрах вызов вспомогательной функции из
     user_hand_serv для разблокировки вызывающего"""
@@ -74,7 +73,7 @@ async def all_user(message: Message) -> None:
     await message.answer(lexicon_user["success_unblock"])
 
 
-@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('unblock'), StateFilter(default_state))
+@user_router.message(IsPrivateChat(), Command('unblock'), NotAdminFilter(), StateFilter(default_state))
 async def all_user(message: Message) -> None:
     """Не прошел фильтр оплаты"""
     await message.answer(lexicon_user["failure_unblock_filter"])
@@ -83,9 +82,9 @@ async def all_user(message: Message) -> None:
 # __________________________________________________________________
 # ________________ Кнопка в меню help ___________________________
 # __________________________________________________________________
-@user_router.message(IsPrivateChat(), NotAdminFilter(), Command('help'), StateFilter(default_state))
+@user_router.message(IsPrivateChat(), Command('help'), NotAdminFilter(), StateFilter(default_state))
 async def all_user(message: Message) -> None:
-    """Не прошел фильтр оплаты"""
+    """Справка для пользователей"""
     await message.answer(lexicon_user["help"])
 
 

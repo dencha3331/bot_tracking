@@ -1,18 +1,12 @@
-from typing import Sequence
-
 from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import ChatMemberUpdated
+from aiogram.types import ChatMemberUpdated, Chat, ChatInviteLink
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
 
-from configs.config import bot, env
-# from configs.config import env
-# from configs.config_bot import bot
-
 from db import crud
-
 from db.models import Groups, Users
 from logs import logger
+from configs.config import bot, env
 
 
 # ______________________________________________________________
@@ -27,19 +21,19 @@ async def add_chat(update: ChatMemberUpdated) -> None:
     logger.debug(f"{update.chat.type}")
     logger.debug("start add_chat in chat_handlers.py")
     chat_id: int = update.chat.id
-    name = update.chat.full_name
+    name: str = update.chat.full_name
     status = update.old_chat_member.status
     logger.debug(f"status bot in chat before {status}")
     if status == ChatMemberStatus.ADMINISTRATOR:
         group_title: str = update.chat.title
-        group_db = crud.get_group_by_title_or_id(group_title=group_title)
+        group_db: Groups = crud.get_group_by_title_or_id(group_title=group_title)
         if group_db:
             crud.del_group(group_db.id)
         try:
-            link = await bot.create_chat_invite_link(chat_id)
+            link: ChatInviteLink = await bot.create_chat_invite_link(chat_id)
         except TelegramBadRequest:
-            link = await bot.get_chat(chat_id)
-        linked = link.invite_link
+            link: Chat = await bot.get_chat(chat_id)
+        linked: str = link.invite_link
         chat = Groups(id=chat_id, nickname=name, link_chat=str(linked))
         crud.add_object(chat)
         logger.debug("add bot because admin")
@@ -76,7 +70,7 @@ async def chat_member_update(update: ChatMemberUpdated) -> None:
                      f' is bot admin name: {user_nickname}')
         return
     user_from_db: Users = crud.get_user_by_id_or_nick(nick=user_nickname)
-    groups: Sequence[Groups] = crud.get_list_groups()
+    groups: list[Groups] = crud.get_list_groups()
     group_is_news: list[int] = [group.id for group in groups if group.news_group]
     await _add_user(update, user_from_db)
     if update.chat.id in group_is_news:
@@ -99,7 +93,8 @@ async def _add_user(update: ChatMemberUpdated, user: Users) -> None:
     Проверка если такого пользователя нет в бд добавляем в _save_unknown_user.
     """
     logger.debug(f"start _add_new_user in chat_handler.py")
-    user_link = f'https://t.me/{update.from_user.username}' if update.from_user.username else None
+    user_link: str | None = f'https://t.me/{update.from_user.username}'\
+        if update.from_user.username else None
     if user and user.tg_id:
         logger.debug(f"start _add_new_user in chat_handler.py because user and user.tg_id")
         return
@@ -136,9 +131,9 @@ async def _save_unknown_user(update: ChatMemberUpdated, user_link: str) -> None:
     Если пользователь не найден в бд по UserName пытаюсь создать нового.
     Если возникает исключение значит telegram id пользователя уже
     есть в бд(поля nickname и tg_id уникальные) удаляю старую запись, добавляю новую"""
-    user_obj = Users(nickname=update.from_user.username, tg_id=update.from_user.id,
-                     user_link=user_link, first_name=update.from_user.first_name,
-                     last_name=update.from_user.last_name)
+    user_obj: Users = Users(nickname=update.from_user.username, tg_id=update.from_user.id,
+                            user_link=user_link, first_name=update.from_user.first_name,
+                            last_name=update.from_user.last_name)
     try:
         crud.add_object(user_obj)
         logger.debug(f"successfully in try: _save_unknown_user")
