@@ -27,6 +27,7 @@ performing checks on unpaid users, and managing bot administrators.
 
 ![ksnip_20240106-172629](https://github.com/dencha3331/bot_tracking/assets/105551459/2329c9c5-8d51-42f8-a95d-907d894bc95d)
 
+
 ## Install
 The bot requires [Redis](https://redis.io/docs/install/install-redis/) to function properly.
 
