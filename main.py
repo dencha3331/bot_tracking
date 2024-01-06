@@ -12,7 +12,9 @@ from handlers.admin_handlers import admin_router
 from handlers.chat_handlers import chat_router
 from keyboards.set_menu import set_main_menu
 from logs import logger
+# from configs.config_bot import bot
 from configs.config import bot
+from middleware.middleware import UserStatusMiddleware
 
 
 async def main():
@@ -22,6 +24,8 @@ async def main():
     dp: Dispatcher = Dispatcher(storage=storage)
     dp.include_router(clear_state_rout)
     dp.include_router(admin_router)
+
+    dp.update.middleware(UserStatusMiddleware())
 
     dp.include_router(user_router)
     dp.include_router(chat_router)
