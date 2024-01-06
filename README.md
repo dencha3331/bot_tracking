@@ -25,7 +25,7 @@ For ease of use, the bot provides a help section that describes each of the prov
 The description includes instructions on adding and removing users, changing the invitation link,
 performing checks on unpaid users, and managing bot administrators.
 
-![ksnip_20240106-172629](https://github.com/dencha3331/bot_tracking/assets/105551459/2329c9c5-8d51-42f8-a95d-907d894bc95d)
+
 
 
 ## Install
@@ -70,6 +70,8 @@ python3 main.py
 предоставляемых функциональных возможностей. Описание включает инструкции по добавлению и 
 удалению пользователей, изменению пригласительной ссылки, проведению проверки на неоплаченных 
 пользователей, а также управлению администраторами бота.
+
+![ksnip_20240106-172629](https://github.com/dencha3331/bot_tracking/assets/105551459/2329c9c5-8d51-42f8-a95d-907d894bc95d)
 
 ## Установка
 Для работы бота нужен [Redis](https://redis.io/docs/install/install-redis/)
