@@ -88,6 +88,12 @@ async def all_user(message: Message) -> None:
     await message.answer(lexicon_user["help"])
 
 
+# ____________ Для удаления сообщений админов чтоб не захламлять чат
+@user_router.message(IsPrivateChat(), AdminFilter())
+async def negative_message(message: Message):
+    await message.delete()
+
+
 # __________ Не прошел не один фильтр _____________________________
 @user_router.message(IsPrivateChat(), StateFilter(default_state))
 async def all_user(message: Message) -> None:

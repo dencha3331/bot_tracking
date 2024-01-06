@@ -39,8 +39,8 @@ admin_hand_kb:
   cancel: Отмена
 
 admin_handler:
-  yes: Да
-  no: Нет
+  "yes": Да
+  "no": Нет
   send: Отправить
   do_not_send: Не отправлять
   cancel: Отмена
