@@ -2,9 +2,11 @@ from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import ChatMemberUpdated, Message
 
+from logs import logger
 from services import chat_hand_serv
-from db import crud
 from configs.config import bot
+from db import crud
+# from configs.config_bot import bot
 
 chat_router: Router = Router()
 
@@ -31,11 +33,11 @@ async def chat_member_update(update: ChatMemberUpdated) -> None:
 # __________ Удаление сообщений о вступление/удалении пользователя ______
 # _______________________________________________________________________
 @chat_router.message(F.content_type.in_(['new_chat_members', 'left_chat_member']))
-async def delete(message: Message) -> None:
+async def delete_mes(message: Message) -> None:
     try:
         await bot.delete_message(message.chat.id, message.message_id)
-    except (TelegramBadRequest, TelegramForbiddenError):
-        pass
+    except (TelegramBadRequest, TelegramForbiddenError) as e:
+        logger.error(f"error in delete_mes in chat_handlers.py: {e}")
 
 
 # _____________________________________________________________________
@@ -45,8 +47,3 @@ async def delete(message: Message) -> None:
 async def new_chat_title(message: Message) -> None:
     """Сохраняю новое имя группы"""
     crud.update_group_by_id(message.chat.id, {'nickname': message.chat.title})
-
-
-@chat_router.message()
-async def delete(message):
-    print(message.content_type, "all")
